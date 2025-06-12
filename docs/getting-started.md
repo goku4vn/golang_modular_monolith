@@ -23,7 +23,7 @@ make docker-dev
 ```
 
 ### 3. Configure Modules
-Tạo file `config/modules.yaml`:
+Update modules `config/modules.yaml`:
 ```yaml
 modules:
   customer: true    # Enable customer module

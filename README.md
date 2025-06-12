@@ -12,10 +12,8 @@ A flexible, modular monolith architecture built with Go, featuring dynamic modul
 # 1. Start development environment
 make docker-dev
 
-# 2. Configure modules
-echo "modules:
-  customer: true
-  order: true" > config/modules.yaml
+# 2. Configure modules (optional)
+cat config/modules.yaml
 
 # 3. Create databases
 make create-databases
@@ -127,7 +125,7 @@ make create-databases
 
 # Output:
 # 🗄️ Database Creation Script
-# ✅ PostgreSQL connection successful
+# ✅ PostgresSQL connection successful
 # 📋 Enabled modules: customer order
 # ✅ Database modular_monolith_customer created
 # ✅ Database modular_monolith_order created
