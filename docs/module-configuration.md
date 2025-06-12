@@ -1,24 +1,35 @@
 # Module Configuration
 
-Hướng dẫn chi tiết về cách cấu hình modules trong Modular Monolith.
+Hướng dẫn chi tiết về cách cấu hình modules trong **Module-Based Auto-Registration Architecture**.
 
 ## Overview
 
-Modular Monolith sử dụng hệ thống cấu hình linh hoạt cho phép:
-- **Bật/tắt modules** dễ dàng
-- **Override cấu hình** cho từng module
-- **Giảm 98% verbosity** so với cấu hình truyền thống
+Modular Monolith sử dụng hệ thống cấu hình linh hoạt với **Auto-Registration** cho phép:
+- **Bật/tắt modules** dễ dàng qua configuration
+- **Auto-discovery** modules từ registered creators
+- **Config-driven loading** - chỉ load modules được enable
+- **Zero hardcoding** - không cần sửa main.go khi thêm module mới
+
+## Module Auto-Registration Flow
+
+```
+1. Module init() → Auto-register creator function
+2. modules.InitializeAllModules() → Import all modules
+3. ModuleManager.LoadEnabledModules() → Load based on config
+4. ModuleRegistry.InitializeAll() → Initialize enabled modules
+5. ModuleRegistry.RegisterAllRoutes() → Register routes dynamically
+```
 
 ## Configuration Files
 
 ### 1. Central Configuration: `config/modules.yaml`
-File chính để điều khiển modules:
+File chính để điều khiển modules (config-driven loading):
 ```yaml
 modules:
-  customer: true                    # Simple enable
-  order: true                       # Simple enable  
-  user: false                       # Completely disable
-  product:                          # Complex configuration
+  customer: true                    # ✅ Will be loaded and initialized
+  order: true                       # ✅ Will be loaded and initialized  
+  user: false                       # ❌ Will be skipped completely
+  product:                          # 🔧 Custom configuration
     enabled: true
     database:
       host: "custom-host"
@@ -39,53 +50,124 @@ migration:
   path: "./migrations"
 ```
 
+## Module Auto-Registration System
+
+### 1. Module Registration (Auto)
+```go
+// internal/modules/customer/module.go
+package customer
+
+import (
+    "golang_modular_monolith/internal/shared/infrastructure/registry"
+)
+
+// Auto-register on package import
+func init() {
+    registry.RegisterModule("customer", func() domain.Module {
+        return NewCustomerModule()
+    })
+}
+```
+
+### 2. Centralized Import
+```go
+// internal/modules/modules.go
+package modules
+
+import (
+    // Import all modules to trigger auto-registration
+    _ "golang_modular_monolith/internal/modules/customer"
+    _ "golang_modular_monolith/internal/modules/order"
+    _ "golang_modular_monolith/internal/modules/user"
+)
+
+func InitializeAllModules() {
+    // Ensures all modules are imported and registered
+}
+```
+
+### 3. Config-Driven Loading
+```go
+// cmd/api/main.go
+func main() {
+    // 1. Trigger auto-registration
+    modules.InitializeAllModules()
+    
+    // 2. Load only enabled modules
+    manager := registry.GetGlobalManager()
+    err := manager.LoadEnabledModules(cfg)  // Only loads enabled modules
+    
+    // 3. Get registry with loaded modules
+    moduleRegistry := manager.GetRegistry()
+}
+```
+
 ## Configuration Formats
 
 ### 1. Simple Boolean (Recommended)
 ```yaml
 modules:
-  customer: true     # Enable with default config
-  user: false        # Completely disable
+  customer: true     # ✅ Enable with default config
+  user: false        # ❌ Completely disable (not loaded)
 ```
 
 ### 2. Array Format
 ```yaml
-modules: [customer, order, product]  # Enable all with defaults
+modules: [customer, order, product]  # ✅ Enable all with defaults
 ```
 
 ### 3. Mixed Format (Most Flexible)
 ```yaml
 modules:
-  customer: true                     # Simple enable
-  order:                            # Complex override
+  customer: true                     # ✅ Simple enable
+  order:                            # 🔧 Complex override
+    enabled: true
     migration:
       enabled: false                # Disable migrations only
-  user: false                       # Disable completely
+  user: false                       # ❌ Disable completely
 ```
 
-## Module States
+## Module States in Auto-Registration
 
-### ✅ Enabled (`module: true`)
-- Module được load và khởi tạo
-- Database được tạo (nếu migration enabled)
-- Routes và handlers được đăng ký
-- Module hoạt động đầy đủ
+### ✅ Registered & Enabled (`module: true`)
+```
+1. Module registered via init() function
+2. Module creator stored in ModuleManager
+3. Module loaded during LoadEnabledModules()
+4. Module initialized with dependencies
+5. Routes registered dynamically
+6. Module started and ready
+```
 
-### 🔧 Enabled with Custom Config
+### 🔧 Registered & Enabled with Custom Config
 ```yaml
 order:
   enabled: true
   migration:
     enabled: false    # Module enabled but no database
 ```
-- Module được load nhưng không tạo database
-- Useful cho modules không cần database
+```
+1. Module registered via init() function
+2. Module loaded with custom configuration
+3. Module initialized but skips database setup
+4. Routes registered normally
+```
 
-### 🚫 Disabled (`module: false`)
-- Module hoàn toàn không được load
-- Không tạo database
-- Không đăng ký routes
-- Tiết kiệm resources
+### 🚫 Registered but Disabled (`module: false`)
+```
+1. Module registered via init() function
+2. Module creator stored but NOT loaded
+3. Module skipped during LoadEnabledModules()
+4. No initialization, no routes, no resources
+```
+
+### ❓ Not Registered (Missing import)
+```
+1. Module not imported in modules.go
+2. init() function never called
+3. Module creator not registered
+4. Module unavailable even if enabled in config
+```
 
 ## Configuration Override Priority
 
@@ -116,8 +198,8 @@ order:
 modules:
   customer: true      # Core module
   order: true         # Core module
-  analytics: false    # Skip heavy modules
-  reporting: false    # Skip heavy modules
+  analytics: false    # Skip heavy modules (not loaded)
+  reporting: false    # Skip heavy modules (not loaded)
 ```
 
 ### 2. Testing Environment
@@ -125,6 +207,7 @@ modules:
 modules:
   customer: true
   order:
+    enabled: true
     migration:
       enabled: false  # Use test fixtures instead
   user: true
@@ -145,7 +228,7 @@ modules:
 modules:
   customer: true
   order: true
-  new_feature: false  # Disable until ready
+  new_feature: false  # Disable until ready (not loaded)
 ```
 
 ## Environment-Specific Configuration
@@ -170,7 +253,7 @@ cp config/modules.dev.yaml config/modules.yaml
 cp config/modules.prod.yaml config/modules.yaml
 ```
 
-## Module Dependencies
+## Module Dependencies in Auto-Registration
 
 ### Handling Dependencies
 ```yaml
@@ -182,8 +265,24 @@ modules:
 
 ### Best Practices
 - **Document dependencies** in module README
-- **Validate dependencies** in module initialization
+- **Validate dependencies** in module Initialize() method
 - **Graceful degradation** when optional modules disabled
+- **Dependency injection** via ModuleDependencies
+
+### Example: Dependency Validation
+```go
+// internal/modules/order/module.go
+func (m *OrderModule) Initialize(deps domain.ModuleDependencies) error {
+    // Check if required modules are loaded
+    registry := deps.ModuleRegistry
+    if !registry.IsModuleLoaded("user") {
+        return fmt.Errorf("order module requires user module to be enabled")
+    }
+    
+    // Initialize with dependencies
+    return m.initializeWithDependencies(deps)
+}
+```
 
 ## Validation and Debugging
 
@@ -192,32 +291,70 @@ modules:
 # View loaded modules
 docker logs tmm-dev | grep "📦 Loaded"
 
+# View registered modules
+docker logs tmm-dev | grep "🔧 Registered"
+
+# View skipped modules
+docker logs tmm-dev | grep "🚫 Skipped"
+
 # View databases
 curl http://localhost:8080/health | jq .databases
 ```
 
+### Module Loading Logs
+```
+🔧 Registered module: customer
+🔧 Registered module: order
+🔧 Registered module: user
+📦 Loaded module: customer (enabled: true)
+📦 Loaded module: order (enabled: true)
+🚫 Skipped module: user (enabled: false)
+✅ Initialized module: customer
+✅ Initialized module: order
+🚀 Started module: customer
+🚀 Started module: order
+```
+
 ### Common Configuration Errors
 
-**1. Module still loading despite `false`**
+**1. Module registered but not loaded**
 ```yaml
-# ❌ Wrong
+# ❌ Module registered via init() but disabled
 modules:
   user: false
 
-# ✅ Correct - check logs for:
-# 🚫 Module user explicitly disabled in central config
+# ✅ Check logs for:
+# 🚫 Skipped module: user (enabled: false)
 ```
 
-**2. Database not created**
+**2. Module not registered (missing import)**
+```go
+// ❌ Missing import in modules.go
+import (
+    _ "golang_modular_monolith/internal/modules/customer"
+    _ "golang_modular_monolith/internal/modules/order"
+    // Missing: _ "golang_modular_monolith/internal/modules/user"
+)
+
+// ✅ Add missing import
+import (
+    _ "golang_modular_monolith/internal/modules/customer"
+    _ "golang_modular_monolith/internal/modules/order"
+    _ "golang_modular_monolith/internal/modules/user"
+)
+```
+
+**3. Database not created**
 ```yaml
 # Check if migration is disabled
 modules:
   order:
+    enabled: true
     migration:
       enabled: false  # This prevents database creation
 ```
 
-**3. Override not working**
+**4. Override not working**
 ```yaml
 # ❌ Wrong nesting
 modules:
@@ -228,18 +365,21 @@ modules:
 # ✅ Correct nesting (check module.yaml structure)
 modules:
   customer:
+    enabled: true
     database:
       host: "correct"
 ```
 
 ## Advanced Configuration
 
-### Custom Module Paths
+### Custom Module Configuration
 ```yaml
 modules:
   custom_module:
     enabled: true
-    path: "./custom/modules/custom_module"
+    custom_setting: "value"
+    database:
+      pool_size: 20
 ```
 
 ### Conditional Configuration
@@ -252,23 +392,106 @@ modules:
 ### Module Groups
 ```yaml
 modules:
-  # Core modules
+  # Core modules (always enabled)
   customer: true
   order: true
   
-  # Optional modules  
+  # Optional modules (environment-dependent)
   analytics: ${ENABLE_ANALYTICS:false}
   reporting: ${ENABLE_REPORTING:false}
   
-  # Feature flags
+  # Feature flags (development)
   new_checkout: ${FEATURE_NEW_CHECKOUT:false}
 ```
 
+## Adding New Modules
+
+### 1. Create Module with Auto-Registration
+```go
+// internal/modules/new_module/module.go
+package new_module
+
+import (
+    "golang_modular_monolith/internal/shared/infrastructure/registry"
+)
+
+// Auto-register on import
+func init() {
+    registry.RegisterModule("new_module", func() domain.Module {
+        return NewNewModule()
+    })
+}
+
+type NewModule struct {
+    name string
+}
+
+// Implement Module interface
+func (m *NewModule) Name() string { return m.name }
+func (m *NewModule) Initialize(deps domain.ModuleDependencies) error { /* ... */ }
+func (m *NewModule) RegisterRoutes(router *gin.RouterGroup) { /* ... */ }
+func (m *NewModule) Health(ctx context.Context) error { /* ... */ }
+func (m *NewModule) Start(ctx context.Context) error { /* ... */ }
+func (m *NewModule) Stop(ctx context.Context) error { /* ... */ }
+```
+
+### 2. Add to Centralized Import
+```go
+// internal/modules/modules.go
+import (
+    _ "golang_modular_monolith/internal/modules/customer"
+    _ "golang_modular_monolith/internal/modules/order"
+    _ "golang_modular_monolith/internal/modules/user"
+    _ "golang_modular_monolith/internal/modules/new_module"  // ✨ Add here
+)
+```
+
+### 3. Enable in Configuration
+```yaml
+# config/modules.yaml
+modules:
+  customer: true
+  order: true
+  user: false
+  new_module: true  # ✨ Enable new module
+```
+
+### 4. No Changes to main.go Required! 🎉
+The module will be automatically:
+- Registered via init() function
+- Loaded if enabled in config
+- Initialized with dependencies
+- Routes registered dynamically
+- Started with other modules
+
 ## Migration Guide
+
+### From Old Hardcoded System
+```go
+// ❌ Old hardcoded approach (main.go)
+import customerhttp "golang_modular_monolith/internal/modules/customer/infrastructure/http"
+
+type Dependencies struct {
+    CustomerHandler *handlers.CustomerHandler
+}
+
+customerhttp.RegisterCustomerRoutes(api, deps.CustomerHandler)
+
+// ✅ New auto-registration approach (main.go)
+import "golang_modular_monolith/internal/modules"
+
+func main() {
+    modules.InitializeAllModules()  // Trigger auto-registration
+    manager := registry.GetGlobalManager()
+    manager.LoadEnabledModules(cfg)  // Load based on config
+    moduleRegistry := manager.GetRegistry()
+    moduleRegistry.RegisterAllRoutes(api)  // Dynamic registration
+}
+```
 
 ### From Old Configuration
 ```yaml
-# ❌ Old verbose format (50+ lines)
+# ❌ Old verbose format (50+ lines per module)
 modules:
   customer:
     enabled: true
@@ -281,13 +504,41 @@ modules:
       path: "./migrations"
     # ... 40+ more lines
 
-# ✅ New simple format (1 line)
+# ✅ New simple format (1 line per module)
 modules:
   customer: true
 ```
 
-### Gradual Migration
-1. **Keep existing config** - Backward compatible
-2. **Simplify one module** at a time
-3. **Test each change** thoroughly
-4. **Remove verbose config** when confident 
+### Gradual Migration Steps
+1. **Implement Module interface** for existing modules
+2. **Add auto-registration** via init() functions
+3. **Add to centralized import** in modules.go
+4. **Simplify configuration** to boolean values
+5. **Remove hardcoded imports** from main.go
+6. **Test each module** thoroughly
+
+## Best Practices
+
+### 1. Module Design
+- **Implement Module interface** completely
+- **Validate dependencies** in Initialize()
+- **Handle graceful shutdown** in Stop()
+- **Provide health checks** in Health()
+
+### 2. Configuration
+- **Use simple boolean** for most modules
+- **Document dependencies** clearly
+- **Use environment variables** for sensitive data
+- **Test different configurations** thoroughly
+
+### 3. Auto-Registration
+- **Always add init() function** for new modules
+- **Import in modules.go** immediately
+- **Test registration** before deployment
+- **Monitor loading logs** for issues
+
+### 4. Debugging
+- **Check registration logs** first
+- **Verify configuration syntax** 
+- **Test module isolation** individually
+- **Monitor resource usage** per module
