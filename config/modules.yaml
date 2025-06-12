@@ -1,0 +1,69 @@
+# =============================================================================
+# Module Configuration - Flexible Format with Override Examples
+# =============================================================================
+# This file demonstrates different ways to override module configurations
+
+# ========================================
+# Method 1: Mixed Format (Recommended)
+# ========================================
+modules:
+  # Simple enable - loads all from internal/modules/customer/module.yaml
+  customer: true
+  order:    
+    migration:
+      enabled: false    # Chỉ tắt migration, còn lại dùng defaults
+  user: false           # Module hoàn toàn disabled - không tạo database
+
+# ========================================
+# Method 2: Partial Override Format
+# ========================================
+# Có thể khai báo như này để chỉ override những gì cần:
+#
+# modules:
+#   customer: true
+#   order:
+#     migration:
+#       enabled: false    # Chỉ tắt migration, còn lại dùng defaults
+
+# ========================================
+# Method 3: Environment Variable Override
+# ========================================
+# Hoặc dùng environment variables (highest priority):
+# export ORDER_MIGRATION_ENABLED=false
+# export ORDER_DATABASE_NAME=custom_order_db
+
+# Global module settings
+global:
+  database:
+    # Default connection pool settings
+    default_max_open_conns: 25
+    default_max_idle_conns: 5
+    default_conn_max_lifetime: "5m"
+    # Health check settings
+    health_check_interval: "30s"
+    connection_timeout: "10s"
+    # Database naming
+    database_prefix: "modular_monolith"
+  
+  vault:
+    # Global Vault settings
+    mount_path: "kv"
+    secret_path: "modular-monolith"
+    enabled: false
+    
+  http:
+    # Global HTTP settings
+    default_middleware:
+      - "cors"
+      - "logging"
+      - "recovery"
+      - "request_id"
+    rate_limiting:
+      enabled: false
+      requests_per_minute: 100
+      
+  features:
+    # Global feature flags
+    events_enabled: true
+    metrics_enabled: true
+    tracing_enabled: false 

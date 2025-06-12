@@ -6,6 +6,8 @@ import (
 	"os"
 	"sync"
 
+	"golang_modular_monolith/internal/shared/infrastructure/config"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -26,6 +28,7 @@ type DatabaseConfig struct {
 type DatabaseManager struct {
 	connections map[string]*gorm.DB
 	configs     map[string]*DatabaseConfig
+	appConfig   *config.Config
 	mu          sync.RWMutex
 }
 
@@ -34,6 +37,39 @@ func NewDatabaseManager() *DatabaseManager {
 	return &DatabaseManager{
 		connections: make(map[string]*gorm.DB),
 		configs:     make(map[string]*DatabaseConfig),
+	}
+}
+
+// NewDatabaseManagerWithConfig creates a new database manager with Viper config
+func NewDatabaseManagerWithConfig(cfg *config.Config) *DatabaseManager {
+	dm := &DatabaseManager{
+		connections: make(map[string]*gorm.DB),
+		configs:     make(map[string]*DatabaseConfig),
+		appConfig:   cfg,
+	}
+
+	// Auto-register databases from config
+	dm.registerDatabasesFromConfig()
+
+	return dm
+}
+
+// registerDatabasesFromConfig registers databases from Viper configuration
+func (dm *DatabaseManager) registerDatabasesFromConfig() {
+	if dm.appConfig == nil {
+		return
+	}
+
+	for name, dbConfig := range dm.appConfig.Databases {
+		dm.configs[name] = &DatabaseConfig{
+			Host:     dbConfig.Host,
+			Port:     dbConfig.Port,
+			Name:     dbConfig.Name,
+			User:     dbConfig.User,
+			Password: dbConfig.Password,
+			SSLMode:  dbConfig.SSLMode,
+		}
+		log.Printf("%s database registered", name)
 	}
 }
 
@@ -104,6 +140,26 @@ func (dm *DatabaseManager) buildDSN(config *DatabaseConfig) string {
 	)
 }
 
+// VerifyConnection verifies database connection
+func (dm *DatabaseManager) VerifyConnection(name string) error {
+	db, err := dm.GetConnection(name)
+	if err != nil {
+		return err
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get underlying sql.DB for %s: %w", name, err)
+	}
+
+	if err := sqlDB.Ping(); err != nil {
+		return fmt.Errorf("failed to ping database %s: %w", name, err)
+	}
+
+	log.Printf("Database connection verified for: %s", name)
+	return nil
+}
+
 // CloseAll closes all database connections
 func (dm *DatabaseManager) CloseAll() error {
 	dm.mu.Lock()
@@ -135,7 +191,7 @@ func (dm *DatabaseManager) GetRegisteredDatabases() []string {
 	return names
 }
 
-// LoadConfigFromEnv loads database configuration from environment variables
+// LoadConfigFromEnv loads database configuration from environment variables (legacy support)
 func LoadConfigFromEnv(prefix string) *DatabaseConfig {
 	return &DatabaseConfig{
 		Host:     getEnv(prefix+"_HOST", "localhost"),
@@ -164,6 +220,14 @@ var once sync.Once
 func GetGlobalManager() *DatabaseManager {
 	once.Do(func() {
 		globalManager = NewDatabaseManager()
+	})
+	return globalManager
+}
+
+// InitializeWithConfig initializes global manager with Viper config
+func InitializeWithConfig(cfg *config.Config) *DatabaseManager {
+	once.Do(func() {
+		globalManager = NewDatabaseManagerWithConfig(cfg)
 	})
 	return globalManager
 }

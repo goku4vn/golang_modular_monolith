@@ -1,0 +1,58 @@
+# Order Module Configuration
+# This file defines the default configuration for the order module
+# Central config/modules.yaml can override these values
+
+enabled: true
+
+module:
+  name: order
+  version: "1.0.0"
+  description: "Order management module with CQRS and clean architecture"
+
+database:
+  host: "${ORDER_DATABASE_HOST:postgres}"
+  port: "${ORDER_DATABASE_PORT:5432}"
+  user: "${ORDER_DATABASE_USER:postgres}"
+  password: "${ORDER_DATABASE_PASSWORD:postgres}"
+  name: "${ORDER_DATABASE_NAME:modular_monolith_order}"
+  sslmode: "${ORDER_DATABASE_SSLMODE:disable}"
+  max_open_conns: "${ORDER_DATABASE_MAX_OPEN_CONNS:25}"
+  max_idle_conns: "${ORDER_DATABASE_MAX_IDLE_CONNS:5}"
+  conn_max_lifetime: "${ORDER_DATABASE_CONN_MAX_LIFETIME:5m}"
+
+migration:
+  path: "internal/modules/order/migrations"
+  enabled: true
+
+vault:
+  path: "modules/order"
+  enabled: true
+
+http:
+  prefix: "/api/v1/orders"
+  enabled: true
+  middleware: ["cors", "logging", "recovery", "request_id"]
+
+features:
+  events_enabled: true
+  caching_enabled: false
+  metrics_enabled: true
+  audit_enabled: true
+
+# Module-specific settings
+order:
+  validation:
+    order_required: true
+    order_item_required: false
+  business_rules:
+    max_orders_per_customer: 1000
+    auto_verify_order_status: false
+  integrations:
+    crm_enabled: false
+    email_service_enabled: false 
+    payment_service_enabled: false
+    shipping_service_enabled: false
+    inventory_service_enabled: false
+    notification_service_enabled: false
+    analytics_service_enabled: false
+    reporting_service_enabled: false

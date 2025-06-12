@@ -1,0 +1,189 @@
+# Production Docker Compose Configuration
+version: '3.8'
+
+services:
+  # Application service
+  app:
+    build:
+      context: ../
+      dockerfile: docker/app/Dockerfile
+    container_name: modular-monolith-prod
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    env_file:
+      - ../docker.env
+    environment:
+      - GIN_MODE=release
+      - LOG_LEVEL=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+    networks:
+      - modular-monolith-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # PostgreSQL database service
+  postgres:
+    build:
+      context: postgres/
+      dockerfile: Dockerfile
+    container_name: modular-monolith-postgres-prod
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_PREFIX=${DATABASE_PREFIX:-modular_monolith}
+    volumes:
+      - postgres-prod-data:/var/lib/postgresql/data
+      - ../:/app:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - modular-monolith-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis cache service
+  redis:
+    build:
+      context: redis/
+      dockerfile: Dockerfile
+    container_name: modular-monolith-redis-prod
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-prod-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - modular-monolith-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # HashiCorp Vault service
+  vault:
+    build:
+      context: vault/
+      dockerfile: Dockerfile
+    container_name: modular-monolith-vault-prod
+    ports:
+      - "${VAULT_PORT:-8200}:8200"
+    volumes:
+      - vault-prod-data:/vault/data
+      - vault-prod-logs:/vault/logs
+    environment:
+      - VAULT_ADDR=http://0.0.0.0:8200
+      - VAULT_CONFIG_PATH=/vault/config/vault-config.hcl
+    cap_add:
+      - IPC_LOCK
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - modular-monolith-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Vault initialization service
+  vault-init:
+    image: hashicorp/vault:1.17
+    container_name: modular-monolith-vault-init-prod
+    volumes:
+      - vault-prod-data:/vault/data
+      - ./vault/vault-init.sh:/vault-init.sh:ro
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=${VAULT_ROOT_TOKEN}
+    depends_on:
+      vault:
+        condition: service_healthy
+    networks:
+      - modular-monolith-network
+    command: ["sh", "/vault-init.sh"]
+    profiles:
+      - vault-init
+
+volumes:
+  postgres-prod-data:
+    driver: local
+  redis-prod-data:
+    driver: local
+  vault-prod-data:
+    driver: local
+  vault-prod-logs:
+    driver: local
+
+networks:
+  modular-monolith-network:
+    driver: bridge
+    name: modular-monolith-network 

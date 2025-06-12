@@ -3,3 +3,23 @@ Ví dụ: update_at nên được tạo trong application, không phải trong d
 
 - Toàn bộ development sẽ được thực hiện trong môi trường docker với golang 1.24 trở lên
 - Ưu tiên dùng docker compose thay vì docker-compose (legacy)
+- Các images docker ưu tiên dùng alpline
+- Trong vault, các secret được lưu trữ riêng cho từng module. Khi tạo secret, cần đảm bảo các secret được lưu trữ riêng cho từng module.
+
+- Cấu trúc cơ bản cho 1 table (entity) như sau:
+```
+CREATE TYPE user_status AS ENUM ('active', 'inactive', 'deleted');
+
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR(36) PRIMARY KEY,
+    ... other fields
+    status user_status DEFAULT 'active',
+    version INTEGER  DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+CREATE INDEX IF NOT EXISTS idx_users_updated_at ON users(updated_at);
+```

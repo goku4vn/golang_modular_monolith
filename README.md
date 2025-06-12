@@ -1,368 +1,351 @@
-# 🏗️ Modular Monolith - Golang Hexagonal + CQRS Architecture
+# Modular Monolith
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go)](https://golang.org/)
-[![Architecture](https://img.shields.io/badge/Architecture-Hexagonal-blue?style=for-the-badge)](https://alistair.cockburn.us/hexagonal-architecture/)
-[![Pattern](https://img.shields.io/badge/Pattern-CQRS-green?style=for-the-badge)](https://martinfowler.com/bliki/CQRS.html)
+[![Architecture](https://img.shields.io/badge/Architecture-Clean-blue?style=for-the-badge)](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
-> **Enterprise-grade Modular Monolith** được xây dựng bằng Golang với **Hexagonal Architecture** và **CQRS Pattern**. Dự án này cung cấp foundation mạnh mẽ để phát triển ứng dụng có thể scale từ monolith sang microservices một cách tự nhiên.
-
-## 🎯 Mục tiêu dự án
-
-- ✅ **Clean Architecture**: Tách biệt rõ ràng business logic và infrastructure
-- ✅ **CQRS Pattern**: Tối ưu hóa read/write operations
-- ✅ **Domain-Driven Design**: Tập trung vào business domain
-- ✅ **Event-Driven**: Loose coupling giữa các modules
-- ✅ **Scalability**: Dễ dàng chuyển đổi sang microservices
-- ✅ **Code Generation**: Rapid development với CRUD generator
-
-## 🏗️ Kiến trúc tổng quan
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    HTTP Layer (Chi/Gin)                     │
-├─────────────────────────────────────────────────────────────┤
-│                   Application Layer                         │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │   Commands  │  │   Queries   │  │  Handlers   │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-├─────────────────────────────────────────────────────────────┤
-│                     Domain Layer                            │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ Aggregates  │  │   Events    │  │  Services   │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-├─────────────────────────────────────────────────────────────┤
-│                 Infrastructure Layer                        │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ PostgreSQL  │  │    Redis    │  │   Logger    │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## 📁 Cấu trúc dự án
-
-```
-├── cmd/
-│   └── server/                 # Application entry point
-├── internal/
-│   ├── shared/                 # Shared kernel
-│   │   ├── domain/            # Common domain objects
-│   │   ├── infrastructure/    # Shared infrastructure
-│   │   └── application/       # Common application services
-│   └── modules/               # Business modules
-│       ├── user/              # User management module
-│       ├── order/             # Order management module
-│       └── product/           # Product catalog module
-├── tools/
-│   └── generator/             # CRUD code generator
-├── config/                    # Configuration files
-├── migrations/                # Database migrations
-├── docker/                    # Docker configuration
-└── pkg/                       # Public packages
-```
+A flexible, modular monolith architecture built with Go, featuring dynamic module configuration and clean architecture principles.
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- **Go 1.21+**
-- **PostgreSQL 15+**
-- **Redis 7+**
-- **Docker & Docker Compose** (optional)
-
-### 1. Clone và Setup
-
 ```bash
-git clone https://github.com/goku4vn/golang_modular_monolith.git
-cd golang_modular_monolith
+# 1. Start development environment
+make docker-dev
 
-# Install dependencies
-go mod tidy
+# 2. Configure modules
+echo "modules:
+  customer: true
+  order: true" > config/modules.yaml
 
-# Copy configuration
-cp config/config.example.yaml config/config.yaml
-```
+# 3. Create databases
+make create-databases
 
-### 2. Database Setup
-
-```bash
-# Start PostgreSQL & Redis với Docker
-docker-compose up -d postgres redis
-
-# Run migrations
+# 4. Run migrations
 make migrate-up
-```
 
-### 3. Run Application
-
-```bash
-# Development mode
-make run-dev
-
-# Production mode
-make build && ./bin/server
-```
-
-### 4. Test API
-
-```bash
-# Health check
+# 5. Test API
 curl http://localhost:8080/health
-
-# Create user
-curl -X POST http://localhost:8080/api/v1/users \
-  -H "Content-Type: application/json" \
-  -d '{"name":"John Doe","email":"john@example.com"}'
-
-# Get user
-curl http://localhost:8080/api/v1/users/{user-id}
 ```
 
-## 🛠️ Development
+## ✨ Key Features
 
-### Code Generation
+- **🎛️ Flexible Module Configuration**: Enable/disable modules with simple `true/false`
+- **🗄️ Manual Database Management**: App controls database lifecycle, not containers
+- **🔧 98% Verbosity Reduction**: `customer: true` instead of 50+ lines of config
+- **🏗️ Clean Architecture**: Domain-driven design with clear layer separation
+- **🚫 Perfect Disable Logic**: Disabled modules are completely excluded
+- **🔄 Hot Reload**: Development with instant code reloading
+- **📦 Modular Design**: Independent modules with their own databases
 
-Generate complete CRUD operations cho entity mới:
+## 📚 Documentation
 
+### 🎯 Getting Started
+- **[Getting Started Guide](docs/getting-started.md)** - Setup project từ đầu
+  - Prerequisites và installation
+  - Quick start workflow
+  - Development environment setup
+  - Troubleshooting common issues
+
+### ⚙️ Configuration
+- **[Module Configuration](docs/module-configuration.md)** - Cấu hình modules chi tiết
+  - Simple boolean configuration (`customer: true`)
+  - Complex configuration overrides
+  - Environment-specific settings
+  - Module states và dependencies
+  - Migration from verbose configs
+
+### 🗄️ Database Management
+- **[Database Management](docs/database-management.md)** - Quản lý databases và migrations
+  - Manual database creation workflow
+  - Migration commands và best practices
+  - Database per module architecture
+  - Environment-specific database setup
+  - Backup và restore procedures
+
+### 🏗️ Architecture
+- **[Project Structure](docs/project-structure.md)** - Cấu trúc source code
+  - Clean architecture layers
+  - Module structure và organization
+  - Dependency flow và rules
+  - Adding new modules
+  - Best practices
+
+### 📋 Commands
+- **[Commands Reference](docs/commands.md)** - Tất cả commands có sẵn
+  - Make commands
+  - Docker commands
+  - Database commands
+  - API testing commands
+  - Troubleshooting commands
+
+## 🎛️ Module Configuration Examples
+
+### Simple Configuration (Recommended)
+```yaml
+# config/modules.yaml
+modules:
+  customer: true     # Enable with defaults
+  order: true        # Enable with defaults
+  analytics: false   # Completely disable
+```
+
+### Advanced Configuration
+```yaml
+# config/modules.yaml
+modules:
+  customer: true                    # Simple enable
+  order:                           # Complex configuration
+    enabled: true
+    migration:
+      enabled: false               # Module enabled but no database
+  user: false                      # Completely disabled
+  analytics:                       # Environment-specific
+    enabled: ${ANALYTICS_ENABLED:false}
+```
+
+### Configuration Results
+- **`customer: true`** → ✅ Module loaded, database created
+- **`order: { migration: { enabled: false } }`** → ✅ Module loaded, no database
+- **`user: false`** → 🚫 Module completely excluded
+- **Logs**: `🚫 Module user explicitly disabled in central config`
+
+## 🗄️ Database Architecture
+
+### Database Per Module
+```
+PostgreSQL Instance
+├── modular_monolith_customer    # Customer module
+├── modular_monolith_order       # Order module  
+├── modular_monolith_analytics   # Analytics module
+└── modular_monolith_reporting   # Reporting module
+```
+
+### Manual Database Creation
 ```bash
-# 1. Create entity config
-cat > tools/generator/config/category.yaml << EOF
-entity:
-  name: Category
-  table: categories
-  schema: product_module
-fields:
-  - name: id
-    type: UUID
-    primary: true
-  - name: name
-    type: string
-    required: true
-    validate: "min=2,max=100"
-  - name: description
-    type: text
-operations:
-  create: true
-  update: true
-  delete: true
-  list: true
-  get: true
-EOF
+# App controls database lifecycle
+make create-databases
 
-# 2. Generate code
-go run tools/generator/main.go -config=tools/generator/config/category.yaml
-
-# 3. Run migration
-make migrate-up
+# Output:
+# 🗄️ Database Creation Script
+# ✅ PostgreSQL connection successful
+# 📋 Enabled modules: customer order
+# ✅ Database modular_monolith_customer created
+# ✅ Database modular_monolith_order created
 ```
 
-### Available Commands
+## 🏗️ Architecture Overview
 
+### Clean Architecture Layers
+```
+┌─────────────────────────────────────┐
+│         Presentation Layer          │  ← HTTP/gRPC/GraphQL
+│            (Controllers)            │
+├─────────────────────────────────────┤
+│         Application Layer           │  ← Use Cases/Commands/Queries
+│          (Business Logic)           │
+├─────────────────────────────────────┤
+│           Domain Layer              │  ← Entities/Domain Services
+│        (Core Business Rules)        │
+├─────────────────────────────────────┤
+│        Infrastructure Layer         │  ← Database/External Services
+│     (Technical Implementation)      │
+└─────────────────────────────────────┘
+```
+
+### Module Structure
+```
+internal/modules/customer/
+├── module.yaml              # Module configuration
+├── migrations/              # Database migrations
+├── domain/                  # Business logic
+├── application/             # Use cases
+├── infrastructure/          # Database/HTTP
+└── presentation/            # Controllers
+```
+
+## 🚀 Development Workflow
+
+### Daily Development
 ```bash
-# Development
-make run-dev          # Run with hot reload
-make test             # Run all tests
-make test-unit        # Run unit tests only
-make test-integration # Run integration tests
-make lint             # Run linter
+# Start development
+make docker-dev
 
-# Database
-make migrate-up       # Apply migrations
-make migrate-down     # Rollback migrations
-make migrate-create   # Create new migration
+# Make code changes (auto-reload)
+# Edit files in internal/modules/...
 
-# Build & Deploy
-make build            # Build binary
-make docker-build     # Build Docker image
-make docker-run       # Run with Docker Compose
+# Add new module
+echo "  new_module: true" >> config/modules.yaml
+make create-databases
 
-# Code Generation
-make generate-user    # Generate User CRUD
-make generate-order   # Generate Order CRUD
-make generate-product # Generate Product CRUD
+# Create migration
+make migrate-create MODULE=new_module NAME=initial_schema
+
+# Run migration
+make migrate-up MODULE=new_module
 ```
 
-## 📚 Architecture Patterns
-
-### 1. Hexagonal Architecture (Ports & Adapters)
-
-```go
-// Domain Layer - Business Logic
-type User struct {
-    ID    UserID
-    Email Email
-    Name  string
-}
-
-// Port - Interface
-type UserRepository interface {
-    Save(ctx context.Context, user *User) error
-    GetByID(ctx context.Context, id UserID) (*User, error)
-}
-
-// Adapter - Implementation
-type PostgreSQLUserRepository struct {
-    db *sql.DB
-}
-```
-
-### 2. CQRS Pattern
-
-```go
-// Command - Write Operation
-type CreateUserCommand struct {
-    Email string `validate:"required,email"`
-    Name  string `validate:"required,min=2"`
-}
-
-// Query - Read Operation
-type GetUserQuery struct {
-    UserID string
-}
-
-// Separate Handlers
-type CreateUserHandler struct { /* ... */ }
-type GetUserHandler struct { /* ... */ }
-```
-
-### 3. Domain Events
-
-```go
-// Domain Event
-type UserCreated struct {
-    UserID     string
-    Email      string
-    OccurredAt time.Time
-}
-
-// Event Handler
-func (h *EmailNotificationHandler) Handle(event UserCreated) error {
-    return h.emailService.SendWelcomeEmail(event.Email)
-}
-```
-
-## 🔧 Tech Stack
-
-### Core Framework
-- **HTTP Router**: Chi (lightweight, fast)
-- **Database**: PostgreSQL + GORM
-- **Cache**: Redis
-- **Config**: Viper
-- **Logging**: Zap
-- **Validation**: Go Playground Validator
-
-### Development Tools
-- **Testing**: Testify + Testcontainers
-- **Migration**: Golang-migrate
-- **Linting**: GolangCI-lint
-- **Documentation**: Swagger/OpenAPI
-
-### Infrastructure
-- **Containerization**: Docker + Docker Compose
-- **Monitoring**: Prometheus + Grafana
-- **Tracing**: Jaeger (optional)
-
-## 📈 Scalability Roadmap
-
-### Phase 1: Modular Monolith (Current)
-- ✅ Modules communicate via in-process events
-- ✅ Shared database với schema separation
-- ✅ Single deployment unit
-
-### Phase 2: Distributed Monolith
-- 🔄 Replace in-process events với message queue
-- 🔄 Separate databases per module
-- 🔄 Keep single deployment
-
-### Phase 3: Microservices
-- ⏳ Extract modules thành independent services
-- ⏳ API Gateway
-- ⏳ Service discovery
-
-## 🧪 Testing Strategy
-
+### Adding New Features
 ```bash
-# Unit Tests - Domain Logic
-make test-unit
+# 1. Create module structure
+mkdir -p internal/modules/feature/{domain,application,infrastructure,presentation}
 
-# Integration Tests - Repository Layer
-make test-integration
+# 2. Add module config
+echo "enabled: true" > internal/modules/feature/module.yaml
 
-# E2E Tests - HTTP Endpoints
-make test-e2e
+# 3. Enable in central config
+echo "  feature: true" >> config/modules.yaml
 
-# Load Tests
-make test-load
+# 4. Create database and migrations
+make create-databases
+make migrate-create MODULE=feature NAME=initial_schema
+make migrate-up MODULE=feature
 ```
 
-### Test Coverage
+## 🔧 Environment Configuration
 
-- **Domain Layer**: 95%+ coverage
-- **Application Layer**: 90%+ coverage
-- **Infrastructure Layer**: 80%+ coverage
-
-## 📊 Monitoring & Observability
-
-### Metrics
-- **HTTP Metrics**: Request count, duration, errors
-- **Database Metrics**: Connection pool, query performance
-- **Business Metrics**: Users created, orders processed
-
-### Logging
-- **Structured Logging**: JSON format với Zap
-- **Correlation IDs**: Request tracing
-- **Log Levels**: Debug, Info, Warn, Error
-
-### Health Checks
+### Development
 ```bash
-curl http://localhost:8080/health
+export ENVIRONMENT=development
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5433
+export DATABASE_PREFIX=dev_modular_monolith
+```
+
+### Production
+```bash
+export ENVIRONMENT=production
+export POSTGRES_HOST=prod-postgres.example.com
+export POSTGRES_PORT=5432
+export DATABASE_PREFIX=modular_monolith
+```
+
+### Module-Specific Overrides
+```bash
+# Override specific module settings
+export CUSTOMER_DATABASE_HOST=custom-host
+export ORDER_MIGRATION_ENABLED=false
+export ANALYTICS_ENABLED=true
+```
+
+## 📊 System Status
+
+### Health Check
+```bash
+curl -s http://localhost:8080/health | jq .
+```
+
+```json
 {
   "status": "healthy",
-  "timestamp": "2024-06-11T19:58:00Z",
-  "checks": {
-    "database": "healthy",
-    "redis": "healthy"
-  }
+  "service": "modular-monolith",
+  "version": "2.0.0",
+  "environment": "development",
+  "databases": ["customer", "order"],
+  "timestamp": "2025-06-12",
+  "message": "🔥 Viper + Docker hot reload is working perfectly!"
 }
 ```
+
+### Module Status
+```bash
+# Check loaded modules
+docker logs modular-monolith-dev | grep "📦 Loaded"
+# Output: 📦 Loaded configuration for 2 modules: [customer order]
+
+# Check disabled modules  
+docker logs modular-monolith-dev | grep "🚫"
+# Output: 🚫 Module user explicitly disabled in central config
+```
+
+## 🛠️ Available Commands
+
+### Essential Commands
+```bash
+make docker-dev        # Start development environment
+make create-databases  # Create databases for enabled modules
+make migrate-up        # Run all migrations
+make migrate-down      # Rollback migrations
+make docker-clean      # Clean environment (removes data!)
+```
+
+### Database Commands
+```bash
+make migrate-create MODULE=customer NAME=add_field
+make migrate-status MODULE=customer
+make migrate-up MODULE=customer
+make migrate-down MODULE=customer VERSION=1
+```
+
+### Development Commands
+```bash
+make build            # Build application
+make test             # Run tests
+make lint             # Run linter
+curl http://localhost:8080/health  # Test API
+```
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+**Module not loading despite enabled**
+```bash
+# Check configuration
+cat config/modules.yaml
+
+# Check logs for disable messages
+docker logs modular-monolith-dev | grep "🚫"
+```
+
+**Database connection failed**
+```bash
+# Check PostgreSQL is running
+docker ps | grep postgres
+
+# Recreate databases
+make create-databases
+```
+
+**Hot reload not working**
+```bash
+# Restart application container
+docker restart modular-monolith-dev
+```
+
+## 🎯 Key Achievements
+
+- ✅ **98% Configuration Reduction**: `customer: true` vs 50+ lines
+- ✅ **Perfect Module Disable**: `user: false` completely excludes module
+- ✅ **Clean Database Management**: App controls lifecycle, not containers
+- ✅ **Flexible Architecture**: Support simple and complex configurations
+- ✅ **Production Ready**: Environment-specific configurations
+- ✅ **Developer Experience**: Hot reload, colored output, clear commands
 
 ## 🤝 Contributing
 
-1. **Fork** repository
-2. **Create** feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** changes (`git commit -m 'Add amazing feature'`)
-4. **Push** branch (`git push origin feature/amazing-feature`)
-5. **Open** Pull Request
+1. **Fork the repository**
+2. **Create feature branch**: `git checkout -b feature/amazing-feature`
+3. **Add module configuration**: Update `config/modules.yaml`
+4. **Create databases**: `make create-databases`
+5. **Add migrations**: `make migrate-create MODULE=feature NAME=initial`
+6. **Test changes**: `make test && curl http://localhost:8080/health`
+7. **Commit changes**: `git commit -m 'Add amazing feature'`
+8. **Push to branch**: `git push origin feature/amazing-feature`
+9. **Open Pull Request**
 
-### Code Standards
+## 📄 License
 
-- **Go fmt**: Automatic formatting
-- **Linting**: Pass golangci-lint checks
-- **Testing**: Maintain test coverage > 80%
-- **Documentation**: Update README cho breaking changes
-
-## 📝 License
-
-Dự án này được phân phối dưới **MIT License**. Xem file [LICENSE](LICENSE) để biết thêm chi tiết.
-
-## 👥 Authors
-
-- **Goku4VN** - *Initial work* - [@goku4vn](https://github.com/goku4vn)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- **Robert C. Martin** - Clean Architecture concepts
-- **Eric Evans** - Domain-Driven Design principles
-- **Alistair Cockburn** - Hexagonal Architecture pattern
-- **Martin Fowler** - CQRS pattern inspiration
+- **Clean Architecture** principles by Robert C. Martin
+- **Domain-Driven Design** concepts by Eric Evans
+- **Modular Monolith** patterns for scalable architecture
+- **Go community** for excellent tooling and libraries
 
 ---
 
-⭐ **Star this repo** if you find it helpful!
+**Built with ❤️ using Go, Docker, PostgreSQL, and Clean Architecture principles.**
 
-📧 **Contact**: [your-email@example.com](mailto:your-email@example.com)
-
-🔗 **Blog**: [Your Architecture Blog](https://your-blog.com)
-
----
-*Built with ❤️ by Baby (Claude Assistant) cho Daddy*
+For detailed documentation, see the [docs/](docs/) directory.

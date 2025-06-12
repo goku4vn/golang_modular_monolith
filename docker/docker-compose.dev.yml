@@ -1,0 +1,158 @@
+# Development Docker Compose Configuration
+
+services:
+  # Application service with hot reload
+  app:
+    build:
+      context: ../
+      dockerfile: docker/app/Dockerfile.dev
+    container_name: modular-monolith-dev
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      # Mount source code for hot reload
+      - ../:/app
+      # Cache Go modules
+      - go-mod-cache:/go/pkg/mod
+      # Exclude tmp directory to avoid conflicts
+      - /app/tmp
+    env_file:
+      - ../docker.env
+    environment:
+      - GIN_MODE=debug
+      - LOG_LEVEL=debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+    networks:
+      - modular-monolith-network
+    restart: unless-stopped
+
+  # PostgreSQL database service
+  postgres:
+    build:
+      context: postgres/
+      dockerfile: Dockerfile
+    container_name: modular-monolith-postgres-dev
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - DATABASE_PREFIX=${DATABASE_PREFIX:-modular_monolith}
+    volumes:
+      - postgres-dev-data:/var/lib/postgresql/data
+      - ../:/app:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - modular-monolith-network
+    restart: unless-stopped
+
+  # Redis cache service
+  redis:
+    build:
+      context: redis/
+      dockerfile: Dockerfile
+    container_name: modular-monolith-redis-dev
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis-dev-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - modular-monolith-network
+    restart: unless-stopped
+
+  # HashiCorp Vault service (development mode)
+  vault:
+    image: hashicorp/vault:1.17
+    container_name: modular-monolith-vault-dev
+    ports:
+      - "${VAULT_PORT:-8200}:8200"
+    volumes:
+      - vault-dev-data:/vault/data
+      - vault-dev-logs:/vault/logs
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=dev-root-token
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+      - VAULT_ADDR=http://0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    healthcheck:
+      test: ["CMD", "sh", "-c", "VAULT_ADDR=http://localhost:8200 vault status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - modular-monolith-network
+    restart: unless-stopped
+    command: ["vault", "server", "-dev", "-dev-root-token-id=dev-root-token", "-dev-listen-address=0.0.0.0:8200"]
+
+  # Vault initialization service
+  vault-init:
+    image: hashicorp/vault:1.17
+    container_name: modular-monolith-vault-init-dev
+    volumes:
+      - vault-dev-data:/vault/data
+      - ./vault/vault-init.sh:/vault-init.sh:ro
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=dev-root-token
+    depends_on:
+      vault:
+        condition: service_healthy
+    networks:
+      - modular-monolith-network
+    command: ["sh", "/vault-init.sh"]
+    profiles:
+      - vault-init
+
+  # Migration service (run once)
+  migrate:
+    build:
+      context: ../
+      dockerfile: docker/app/Dockerfile.dev
+    container_name: modular-monolith-migrate-dev
+    volumes:
+      - ../:/app
+      - go-mod-cache:/go/pkg/mod
+    env_file:
+      - ../docker.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - modular-monolith-network
+    command: ["go", "run", "cmd/migrate/main.go", "-module=all", "-action=up"]
+    profiles:
+      - migrate
+
+volumes:
+  postgres-dev-data:
+    driver: local
+  redis-dev-data:
+    driver: local
+  go-mod-cache:
+    driver: local
+  vault-dev-data:
+    driver: local
+  vault-dev-logs:
+    driver: local
+
+networks:
+  modular-monolith-network:
+    driver: bridge
+    name: modular-monolith-network 

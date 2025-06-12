@@ -25,23 +25,23 @@ fi
 
 # Stop any existing containers
 echo "🛑 Stopping existing containers..."
-docker compose -f docker-compose.dev.yml down || true
+docker compose -f docker/docker-compose.dev.yml down || true
 
 # Build development image
 echo "🔨 Building development Docker image..."
-docker compose -f docker-compose.dev.yml build
+docker compose -f docker/docker-compose.dev.yml build
 
 # Start PostgreSQL first
 echo "📦 Starting PostgreSQL container..."
-docker compose -f docker-compose.dev.yml up -d postgres
+docker compose -f docker/docker-compose.dev.yml up -d postgres
 
 # Wait for PostgreSQL to be ready
 echo "⏳ Waiting for PostgreSQL to be ready..."
 sleep 10
 
-# Run migrations
-echo "🔄 Running database migrations..."
-docker compose -f docker-compose.dev.yml run --rm migrate
+echo "📋 PostgreSQL is ready!"
+echo "💡 To create databases manually, run: make create-databases"
+echo "💡 To run migrations, run: make migrate-up"
 
 # Start application with hot reload
 echo "🔥 Starting application with hot reload..."
@@ -52,6 +52,8 @@ echo ""
 echo "🐳 Docker containers:"
 echo "  - Application: modular-monolith-dev"
 echo "  - PostgreSQL: modular-monolith-postgres-dev"
+echo "  - Redis: modular-monolith-redis-dev"
+echo "  - Vault: modular-monolith-vault-dev"
 echo ""
 echo "📋 Useful commands:"
 echo "  - View logs: make docker-dev-logs"
@@ -62,4 +64,4 @@ echo "Press Ctrl+C to stop the development server"
 echo ""
 
 # Start application (this will show logs)
-docker compose -f docker-compose.dev.yml up app 
+docker compose -f docker/docker-compose.dev.yml up app 

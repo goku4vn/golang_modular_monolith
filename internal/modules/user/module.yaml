@@ -1,0 +1,56 @@
+# User Module Configuration
+# This file defines the default configuration for the user module
+# Central config/modules.yaml can override these values
+
+enabled: true
+
+module:
+  name: user
+  version: "1.0.0"
+  description: "User management module with authentication and authorization"
+
+database:
+  host: "${USER_DATABASE_HOST:postgres}"
+  port: "${USER_DATABASE_PORT:5432}"
+  user: "${USER_DATABASE_USER:postgres}"
+  password: "${USER_DATABASE_PASSWORD:postgres}"
+  name: "${USER_DATABASE_NAME:modular_monolith_user}"
+  sslmode: "${USER_DATABASE_SSLMODE:disable}"
+  max_open_conns: "${USER_DATABASE_MAX_OPEN_CONNS:25}"
+  max_idle_conns: "${USER_DATABASE_MAX_IDLE_CONNS:5}"
+  conn_max_lifetime: "${USER_DATABASE_CONN_MAX_LIFETIME:5m}"
+
+migration:
+  path: "internal/modules/user/migrations"
+  enabled: true
+
+vault:
+  path: "modules/user"
+  enabled: true
+
+http:
+  prefix: "/api/v1/users"
+  enabled: true
+  middleware: ["cors", "logging", "recovery", "request_id", "auth"]
+
+features:
+  events_enabled: true
+  caching_enabled: true
+  metrics_enabled: true
+  audit_enabled: true
+
+# Module-specific settings
+user:
+  authentication:
+    jwt_enabled: true
+    session_timeout: "24h"
+    password_min_length: 8
+  authorization:
+    rbac_enabled: true
+    default_role: "user"
+  security:
+    password_hashing: "bcrypt"
+    two_factor_enabled: false
+  integrations:
+    oauth_providers: ["google", "github"]
+    ldap_enabled: false 
