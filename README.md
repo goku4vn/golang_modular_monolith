@@ -74,6 +74,12 @@ curl http://localhost:8080/health
   - Dependency flow và rules
   - Adding new modules
   - Best practices
+- **[Dependency Injection](docs/dependency-injection.md)** - DI architecture và module wiring
+  - Manual DI container implementation
+  - Interface-based dependency injection
+  - Module communication patterns
+  - Testing strategies với mocks
+  - Advanced DI patterns và best practices
 
 ### 📋 Commands
 - **[Commands Reference](docs/commands.md)** - Tất cả commands có sẵn

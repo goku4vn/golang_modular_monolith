@@ -1,23 +1,25 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/gin-gonic/gin"
-
-	commandhandlers "golang_modular_monolith/internal/modules/customer/application/command_handlers"
-	queryhandlers "golang_modular_monolith/internal/modules/customer/application/query_handlers"
-	customerhttp "golang_modular_monolith/internal/modules/customer/infrastructure/http"
-	"golang_modular_monolith/internal/modules/customer/infrastructure/http/handlers"
-	"golang_modular_monolith/internal/modules/customer/infrastructure/persistence"
 
 	"golang_modular_monolith/internal/shared/domain"
 	"golang_modular_monolith/internal/shared/infrastructure/config"
 	"golang_modular_monolith/internal/shared/infrastructure/database"
 	"golang_modular_monolith/internal/shared/infrastructure/eventbus"
+	"golang_modular_monolith/internal/shared/infrastructure/registry"
+
+	// Import modules package to trigger auto-registration of all modules
+	"golang_modular_monolith/internal/modules"
 )
 
 func main() {
+	// Initialize all modules (triggers auto-registration)
+	modules.InitializeAllModules()
+
 	// Load configuration using Viper
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -37,14 +39,20 @@ func main() {
 	// Initialize event bus
 	eventBus := eventbus.NewInMemoryEventBus()
 
-	// Initialize dependencies
-	dependencies, err := initDependencies(eventBus)
+	// Load enabled modules
+	moduleRegistry, err := initModules(cfg, eventBus)
 	if err != nil {
-		log.Fatalf("Failed to initialize dependencies: %v", err)
+		log.Fatalf("Failed to initialize modules: %v", err)
 	}
 
 	// Initialize Gin router
-	router := initRouter(cfg, dependencies)
+	router := initRouter(cfg, moduleRegistry)
+
+	// Start modules
+	ctx := context.Background()
+	if err := moduleRegistry.StartAll(ctx); err != nil {
+		log.Fatalf("Failed to start modules: %v", err)
+	}
 
 	// Start server
 	log.Printf("Starting server on port %s", cfg.App.Port)
@@ -70,54 +78,37 @@ func initDatabases(cfg *config.Config) error {
 	return nil
 }
 
-// Dependencies holds all application dependencies
-type Dependencies struct {
-	CustomerHandler *handlers.CustomerHandler
-}
+// initModules loads and initializes all enabled modules
+func initModules(cfg *config.Config, eventBus domain.EventBus) (*domain.ModuleRegistry, error) {
+	log.Println("🔧 Initializing modules...")
 
-// initDependencies initializes all application dependencies
-func initDependencies(eventBus domain.EventBus) (*Dependencies, error) {
-	// Customer repositories using database manager
-	customerRepo, err := persistence.NewPostgreSQLCustomerRepositoryFromManager()
-	if err != nil {
+	// Get global module manager
+	manager := registry.GetGlobalManager()
+
+	// Load enabled modules from configuration
+	if err := manager.LoadEnabledModules(cfg); err != nil {
 		return nil, err
 	}
 
-	customerQueryRepo, err := persistence.NewPostgreSQLCustomerQueryRepositoryFromManager()
-	if err != nil {
+	// Get module registry
+	moduleRegistry := manager.GetRegistry()
+
+	// Initialize all modules with dependencies
+	deps := domain.ModuleDependencies{
+		EventBus: eventBus,
+		Config:   cfg, // Pass full config, modules can extract what they need
+	}
+
+	if err := moduleRegistry.InitializeAll(deps); err != nil {
 		return nil, err
 	}
 
-	// Domain services
-	customerDomainService := persistence.NewCustomerDomainService(customerRepo)
-
-	// Command handlers
-	createCustomerHandler := commandhandlers.NewCreateCustomerHandler(
-		customerRepo,
-		customerDomainService,
-		eventBus,
-	)
-
-	// Query handlers
-	getCustomerHandler := queryhandlers.NewGetCustomerHandler(customerQueryRepo)
-	listCustomersHandler := queryhandlers.NewListCustomersHandler(customerQueryRepo)
-	searchCustomersHandler := queryhandlers.NewSearchCustomersHandler(customerQueryRepo)
-
-	// HTTP handlers
-	customerHandler := handlers.NewCustomerHandler(
-		createCustomerHandler,
-		getCustomerHandler,
-		listCustomersHandler,
-		searchCustomersHandler,
-	)
-
-	return &Dependencies{
-		CustomerHandler: customerHandler,
-	}, nil
+	log.Printf("✅ Modules initialized successfully: %v", moduleRegistry.GetModuleNames())
+	return moduleRegistry, nil
 }
 
 // initRouter initializes Gin router with all routes
-func initRouter(cfg *config.Config, deps *Dependencies) *gin.Engine {
+func initRouter(cfg *config.Config, moduleRegistry *domain.ModuleRegistry) *gin.Engine {
 	// Set Gin mode from config
 	gin.SetMode(cfg.App.GinMode)
 
@@ -130,13 +121,13 @@ func initRouter(cfg *config.Config, deps *Dependencies) *gin.Engine {
 	router.Use(corsMiddleware())
 
 	// Add health check
-	router.GET("/health", healthCheckHandler(cfg))
+	router.GET("/health", healthCheckHandler(cfg, moduleRegistry))
 
 	// API routes
 	api := router.Group("/api/v1")
 	{
-		// Register customer routes
-		customerhttp.RegisterCustomerRoutes(api, deps.CustomerHandler)
+		// Register routes for all modules
+		moduleRegistry.RegisterAllRoutes(api)
 	}
 
 	return router
@@ -158,20 +149,51 @@ func corsMiddleware() gin.HandlerFunc {
 	}
 }
 
-// healthCheckHandler returns a health check handler with config
-func healthCheckHandler(cfg *config.Config) gin.HandlerFunc {
+// healthCheckHandler returns a health check handler with config and modules
+func healthCheckHandler(cfg *config.Config, moduleRegistry *domain.ModuleRegistry) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		manager := database.GetGlobalManager()
 		databases := manager.GetRegisteredDatabases()
 
-		c.JSON(200, gin.H{
-			"status":      "healthy",
+		// Check module health
+		ctx := context.Background()
+		moduleHealth := moduleRegistry.HealthCheckAll(ctx)
+
+		// Determine overall status
+		status := "healthy"
+		for _, err := range moduleHealth {
+			if err != nil {
+				status = "unhealthy"
+				break
+			}
+		}
+
+		response := gin.H{
+			"status":      status,
 			"service":     cfg.App.Name,
 			"version":     cfg.App.Version,
 			"environment": cfg.App.Environment,
 			"databases":   databases,
-			"message":     "🔥 Viper + Docker hot reload is working perfectly!",
-			"timestamp":   "2025-06-12",
-		})
+			"modules":     moduleRegistry.GetModuleNames(),
+			"module_health": func() map[string]string {
+				health := make(map[string]string)
+				for name, err := range moduleHealth {
+					if err != nil {
+						health[name] = err.Error()
+					} else {
+						health[name] = "healthy"
+					}
+				}
+				return health
+			}(),
+			"message":   "🚀 Modular system with dynamic module loading!",
+			"timestamp": "2025-06-12",
+		}
+
+		if status == "healthy" {
+			c.JSON(200, response)
+		} else {
+			c.JSON(503, response)
+		}
 	}
 }

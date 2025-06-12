@@ -9,10 +9,8 @@
 modules:
   # Simple enable - loads all from internal/modules/customer/module.yaml
   customer: true
-  order:    
-    migration:
-      enabled: false    # Chỉ tắt migration, còn lại dùng defaults
-  user: false           # Module hoàn toàn disabled - không tạo database
+  order: true        # Enable order module để test auto-discovery
+  user: false        # Module hoàn toàn disabled - không tạo database
 
 # ========================================
 # Method 2: Partial Override Format

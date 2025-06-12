@@ -1148,285 +1148,295 @@ The dynamic migration system automatically supports:
 
 **Migration Tool Status: ✅ FULLY DYNAMIC - No hardcoding, infinite scalability!** 
 
-## Conversation Summary: Flexible Module Configuration Implementation and Error Resolution
+## Conversation Summary: Dependency Injection Documentation Creation and Correction
 
-## Initial Request and Implementation
-User requested simplification of module declaration in `config/modules.yaml`, noting that verbose configuration was redundant when module-level configs already existed in `internal/modules/*/module.yaml`. The assistant implemented a flexible module configuration system supporting multiple formats:
+## Initial Request and Context
+User requested comprehensive documentation about the Dependency Injection (DI) mechanism of modules and related components in a single file. User works on a Go modular monolith project at `/Users/tungmang/GolandProjects/modular-monolith` and prefers Vietnamese responses with specific addressing conventions (user as "daddy", assistant as "baby").
 
-- **Simple Boolean**: `customer: true` (1 line instead of 50+)
-- **Array Format**: `modules: [customer, order]`
-- **Mixed Format**: Simple enables with selective complex overrides
+## Phase 1: Initial Documentation Creation
+Assistant created `docs/dependency-injection.md` (1,400+ lines) with comprehensive but inaccurate content including:
+- Manual DI Container implementation
+- Clean Architecture integration patterns
+- Module registration patterns
+- Interface-based DI systems
+- Advanced patterns (decorators, plugins, factory patterns)
+- Event-driven communication systems
+- Cross-module communication patterns
+- Testing strategies with mocks and integration tests
+- Performance considerations and best practices
+- Anti-patterns and evolution paths
 
-## Technical Implementation Details
-The assistant created:
-- `FlexibleModulesConfig` struct with `interface{}` for modules field
-- `processFlexibleModulesConfig()` function to handle different formats
-- `processModuleValue()` to handle bool/string/object types
-- `loadModuleLevelConfigByName()` to load from module.yaml files
-- `createDefaultModuleConfig()` for modules without module.yaml
+Also updated `README.md` to add DI documentation link in Architecture section and `summary.md` to document the creation.
 
-## Configuration Override Methods
-Demonstrated three override approaches:
-1. **Mixed Format** (recommended): `customer: true` with complex object overrides for specific settings
-2. **Partial Override**: Only override needed fields like `migration: enabled: false`
-3. **Environment Variables**: Highest priority using `export ORDER_MIGRATION_ENABLED=false`
+## Phase 2: Critical User Feedback
+User identified that the documentation didn't match the actual running structure and requested corrections based on best practices, highlighting a fundamental accuracy problem.
 
-## File Cleanup and Issues
-User requested review of `config.yaml` and `config.example.yaml`. Assistant found both files obsolete:
-- `config.yaml` was empty
-- `config.example.yaml` contained outdated format conflicting with new system
-- Both files were deleted
+## Phase 3: Comprehensive Codebase Analysis
+Assistant conducted thorough analysis of actual implementation by examining:
 
-## Error Resolution Process
-After deletion, `make docker-dev` failed with "No enabled modules found in configuration". Assistant identified and fixed multiple issues:
+### Key Files Analyzed:
+- `cmd/api/main.go`: Revealed simple manual DI with basic `Dependencies` struct containing only `CustomerHandler`
+- `internal/shared/infrastructure/database/manager.go`: Found global database manager pattern with connection pooling
+- `internal/modules/customer/infrastructure/persistence/customer_repository.go`: Repository factory pattern using `NewPostgreSQLCustomerRepositoryFromManager()`
+- `internal/shared/infrastructure/eventbus/in_memory_event_bus.go`: Simple in-memory event bus with function handlers
+- `internal/shared/infrastructure/config/config.go`: Viper configuration management
 
-### Migration Tool Fix
-The migration tool (`cmd/migrate/main.go`) was using `cfg.Databases` to detect modules, but this was empty after config deletion. Fixed by:
-- Updating `getAvailableModules()` to use modules config instead of databases config
-- Modifying `registerModule()` to extract database config from modules config when needed
+### Reality vs Documentation Discrepancies:
+**Actual Implementation:**
+- Simple `Dependencies` struct with only HTTP handlers
+- Manual dependency wiring in `initDependencies()` function
+- Global database manager for centralized connection management
+- Repository factory functions that get DB connections from manager
+- Simple in-memory event bus with basic publish/subscribe
+- Sequential dependency creation with error handling
+- No complex DI container or module registration system
 
-### Order Module Configuration
-Found order module had incorrect configuration:
-- `enabled: false` → changed to `enabled: true`
-- Database environment variables using `CUSTOMER_*` → corrected to `ORDER_*`
+**Original Documentation (Incorrect):**
+- Complex DI container with multiple modules
+- Module registration interfaces and patterns
+- Advanced decorator and plugin architectures
+- Sophisticated cross-module communication systems
 
-### Database Initialization
-Created missing database initialization file `internal/modules/order/database/init.sql` to create the `modular_monolith_order` database.
+## Phase 4: Complete Documentation Rewrite
+Assistant completely rewrote `docs/dependency-injection.md` to accurately reflect actual implementation:
 
-### Volume Reset Issue
-Final issue was PostgreSQL skipping initialization due to existing data directory. Assistant removed the postgres volume (`docker_postgres-dev-data`) to force fresh database creation.
+### New Accurate Content:
+- **Current DI Architecture**: Simple manual DI with Database Manager pattern
+- **Actual Implementation Examples**: Real code from the codebase showing manual wiring
+- **Database Manager Pattern**: Global manager for connection pooling and configuration integration
+- **Repository Factory Pattern**: Factory functions using database manager connections
+- **Simple Dependencies Structure**: Flat structure analysis with extensibility guidance
+- **Manual Dependency Wiring**: Step-by-step breakdown of `initDependencies()` function
+- **HTTP Layer Integration**: Router setup and route registration patterns
+- **Event Bus Integration**: Simple in-memory event bus usage in command handlers
+- **Current DI Best Practices**: Constructor injection, interface-based dependencies, factory patterns, error handling
+- **Testing Strategies**: Unit testing with mocks and integration testing with database manager
+- **Evolution Path**: Roadmap from current simple DI to module-based and eventually advanced DI container
+- **Performance Considerations**: Connection pooling, lazy initialization, memory efficiency
+- **Configuration-Driven DI**: Module configuration integration and database configuration loading
+- **Anti-Patterns**: Global variables (except database manager), circular dependencies, service locator pattern
+- **Adding New Modules**: Step-by-step guide for extending the current architecture
+- **Architecture Benefits**: Simplicity, performance, and maintainability advantages
 
-## Critical Bug Fix - Module Enable Logic
-**Issue**: After fresh database setup, app failed with "failed to get customer database: database configuration not found for: customer"
+### Technical Architecture Details:
+- Uses Viper for configuration management
+- Global `DatabaseManager` with `sync.RWMutex` for thread-safe connection management
+- Repository factories like `NewPostgreSQLCustomerRepositoryFromManager()` that get connections via manager
+- Simple `Dependencies` struct: `type Dependencies struct { CustomerHandler *handlers.CustomerHandler }`
+- Manual wiring in `initDependencies(eventBus domain.EventBus) (*Dependencies, error)`
+- In-memory event bus with `map[string][]EventHandler` and reflection-based event type detection
+- Router initialization with dependency injection: `initRouter(cfg *config.Config, deps *Dependencies)`
 
-**Root Cause**: In `processModuleValue()` function, when central config had `customer: true`, it loaded the module config from `internal/modules/customer/module.yaml` which had `enabled: false`. The merge logic didn't properly override the enabled status.
+## Phase 5: Module Auto-Registration Refactor (NEW)
+User requested refactoring to eliminate hardcoded module registration in `main.go` and implement auto-discovery system.
 
-**Solution**: Modified `processModuleValue()` to force `enabled: true` when a module is explicitly enabled in central config:
-```go
-// Before: Just loaded module config as-is
-return loadModuleLevelConfigByName(name)
+### Refactor Implementation:
+**1. Module Interface & Registry System:**
+- Created `internal/shared/domain/module.go` with `Module` interface
+- Implemented `ModuleRegistry` for managing module lifecycle
+- Added methods: `Initialize()`, `RegisterRoutes()`, `Health()`, `Start()`, `Stop()`
 
-// After: Force enable when explicitly set in central config
-config, err := loadModuleLevelConfigByName(name)
-if config != nil {
-    config.Enabled = true // Force enable
-}
-return config, nil
-```
+**2. Module Factory & Auto-Registration:**
+- Created `internal/shared/infrastructure/registry/module_factory.go`
+- Implemented `ModuleFactory` with `ModuleCreator` function type
+- Global factory instance with `RegisterModule()` for auto-registration
+- Dynamic module creation based on available registered modules
 
-Also updated `config/modules.yaml` to enable both modules:
-```yaml
-modules:
-  customer: true
-  order: true  # Changed from false
-```
+**3. Module Loader Refactor:**
+- Refactored `internal/shared/infrastructure/registry/module_loader.go`
+- Removed hardcoded module checks (customer, order, user)
+- Implemented auto-discovery: scans available modules from factory
+- Config-driven loading: only loads enabled modules
 
-## Architecture Improvement - Database Management
-**Issue**: User identified that database initialization in PostgreSQL container was architecturally wrong. App should control database lifecycle, not the container.
+**4. Customer Module Implementation:**
+- Created `internal/modules/customer/module.go` implementing `Module` interface
+- Added `init()` function for auto-registration: `registry.RegisterModule("customer", func() domain.Module { return NewCustomerModule() })`
+- Moved all customer-specific DI logic from main.go to module
+- Implemented full module lifecycle methods
 
-**Solution**: Complete architecture refactor:
+**5. Skeleton Modules:**
+- Created `internal/modules/order/module.go` and `internal/modules/user/module.go`
+- Both implement `Module` interface with skeleton functionality
+- Auto-registration via `init()` functions
+- Basic HTTP routes for testing: `/api/v1/orders/` and `/api/v1/users/`
 
-### 1. Clean PostgreSQL Container
-- Removed `init-databases.sh` script from PostgreSQL container
-- Updated `docker/postgres/Dockerfile` to be clean PostgreSQL without auto-init
-- PostgreSQL container now starts with empty state
-
-### 2. Manual Database Creation Script
-Created `scripts/create-databases.sh` with:
-- Automatic discovery of enabled modules from config
-- PostgreSQL connection validation
-- Database creation with proper naming (`modular_monolith_{module}`)
-- Colored output and error handling
-- Added `make create-databases` command
-
-### 3. Updated Development Workflow
-- Removed automatic migration from `scripts/docker-dev.sh`
-- Added instructions for manual database creation
-- App now has full control over database lifecycle
-
-## Critical Bug Fix - Module Disable Logic
-**Issue**: `user: false` configuration was not working. User module was still being loaded despite being explicitly disabled.
-
-**Root Cause**: The merge logic in `mergeModuleConfigs()` was loading all module-level configs first, then only overriding with central config. When `user: false`, `processModuleValue()` returned `nil`, but the user module was already loaded from module-level config and not removed.
-
-**Solution**: Complete logic refactor:
-1. **Created `ModulesConfigWithDisabled`** struct to track explicitly disabled modules
-2. **Updated `processModuleValue()`** to return `(config, isDisabled, error)` tuple
-3. **Created `mergeModuleConfigsWithDisabled()`** function that:
-   - Processes central config first
-   - Tracks disabled modules in `DisabledModules` map
-   - Skips module-level configs for explicitly disabled modules
-   - Logs disabled modules: `🚫 Module user explicitly disabled in central config`
-
-## Comprehensive Test Case
-Added user module with complete structure and tested three scenarios:
-
-### Test Configuration:
-```yaml
-modules:
-  customer: true                    # Simple enable
-  order:
-    migration:
-      enabled: false               # Module enabled, migration disabled
-  user: false                     # Module completely disabled
-```
-
-### Test Results ✅:
-1. **`customer: true`** → Module enabled, database created & connected
-2. **`order: { migration: { enabled: false } }`** → Module enabled, NO database (migration disabled)
-3. **`user: false`** → Module completely disabled, NOT loaded
-
-### Database Creation Script Test ✅:
-- Script correctly parsed only modules section (not global config)
-- Created only `modular_monolith_customer` database
-- Skipped user (disabled) and order (migration disabled)
-
-### Final App Status ✅:
-- **Modules loaded**: `[customer order]` (user excluded)
-- **Databases**: `["customer"]` (only customer)
-- **Health endpoint**: Returns healthy with correct database list
-- **API**: Fully operational on port 8080
-
-## Final Status ✅
-**SYSTEM FULLY OPERATIONAL WITH PERFECT ARCHITECTURE**
-
-### Key Achievements:
-1. **Flexible Configuration**: 98% verbosity reduction (50+ lines → 1 line per module)
-2. **Proper Database Management**: App controls database lifecycle, not container
-3. **Correct Disable Logic**: `user: false` completely excludes module
-4. **Manual Database Creation**: `make create-databases` script works perfectly
-5. **Clean Architecture**: PostgreSQL container is clean, app manages everything
-6. **Full Override Capabilities**: All three override methods working
-7. **Backward Compatibility**: Existing complex configs still work
+**6. Main.go Refactor:**
+- **Removed hardcoded imports**: No more direct customer imports
+- **Added module imports**: `_ "golang_modular_monolith/internal/modules/customer"` etc.
+- **Replaced Dependencies struct**: Now uses `ModuleRegistry`
+- **Dynamic route registration**: `moduleRegistry.RegisterAllRoutes(api)`
+- **Enhanced health check**: Includes module health status
+- **Module lifecycle**: Calls `StartAll()` and `StopAll()`
 
 ### Architecture Benefits:
-- **True Modular Control**: App decides which databases to create based on enabled modules
-- **Environment Flexibility**: Different modules per environment via config
-- **Developer Experience**: Simple commands with clear feedback
-- **Scalability**: New modules automatically supported when added to config
-- **Separation of Concerns**: Database management separated from container initialization
+**Before (Hardcoded):**
+```go
+// Hard-coded in main.go
+import customerhttp "golang_modular_monolith/internal/modules/customer/infrastructure/http"
+import "golang_modular_monolith/internal/modules/customer/infrastructure/http/handlers"
 
-**The flexible module configuration system is now production-ready with perfect architecture!** 🚀
+type Dependencies struct {
+    CustomerHandler *handlers.CustomerHandler
+}
 
-## Documentation Structure Creation
+// Manual registration
+customerhttp.RegisterCustomerRoutes(api, deps.CustomerHandler)
+```
 
-### Complete Documentation System
-Created comprehensive documentation structure in `docs/` directory:
+**After (Auto-Discovery):**
+```go
+// Auto-registration in module
+func init() {
+    registry.RegisterModule("customer", func() domain.Module {
+        return NewCustomerModule()
+    })
+}
 
-#### 1. Getting Started Guide (`docs/getting-started.md`)
-- **Prerequisites**: Docker, Go 1.21+, Make
-- **Quick Start**: 7-step setup process
-- **Development Workflow**: Daily development và stopping procedures
-- **Troubleshooting**: Common issues và solutions
-- **Next Steps**: Links to other documentation
+// Dynamic loading in main.go
+moduleRegistry, err := initModules(cfg, eventBus)
+moduleRegistry.RegisterAllRoutes(api)
+```
 
-#### 2. Module Configuration (`docs/module-configuration.md`)
-- **Configuration Formats**: Simple boolean, array, mixed formats
-- **Module States**: Enabled, enabled with custom config, disabled
-- **Override Priority**: Environment variables → Central config → Module-level config
-- **Common Use Cases**: Development, testing, production, feature flags
-- **Environment-Specific Configuration**: Multiple environments support
-- **Validation and Debugging**: Configuration checking và error resolution
-- **Migration Guide**: From verbose to simple configuration
+### Configuration-Driven Loading:
+```yaml
+# config/modules.yaml
+modules:
+  customer: true    # ✅ Loaded and registered
+  order: true       # ✅ Loaded and registered  
+  user: false       # ⏭️ Skipped
+```
 
-#### 3. Database Management (`docs/database-management.md`)
-- **Database Architecture**: Database per module approach
-- **Database Creation**: Automatic script và manual creation
-- **Migration Management**: Commands, tool usage, best practices
-- **Common Scenarios**: Adding modules, disabling databases, environment setup
-- **Troubleshooting**: Database connection issues, migration failures
-- **Advanced Usage**: Custom names, multiple environments, backup/restore
+### Final Updates
+Assistant updated `summary.md` to document the complete refactor process:
+- **Issue**: Hardcoded module registration in main.go
+- **Solution**: Auto-registration with Module interface and Factory pattern
+- **Implementation**: Module auto-discovery, config-driven loading, lifecycle management
+- **Result**: Extensible, maintainable, and scalable module architecture
+- **Testing**: Successfully builds and supports dynamic module loading
 
-#### 4. Project Structure (`docs/project-structure.md`)
-- **Architecture Overview**: Clean Architecture với DDD
-- **Directory Structure**: Root, command, internal, module structure
-- **Architecture Layers**: Domain, Application, Infrastructure, Presentation
-- **Module Lifecycle**: Registration, configuration, loading
-- **Dependency Flow**: Layer dependencies và rules
-- **Best Practices**: Module independence, clean architecture, testing
-- **Adding New Modules**: Step-by-step guide
+## Key Outcomes
+1. **Accurate Documentation**: Complete alignment between documentation and actual codebase
+2. **Reality Check Process**: Demonstrated importance of validating documentation against actual implementation
+3. **Practical Architecture**: Simple, effective DI approach suitable for modular monolith
+4. **Evolution Guidance**: Clear path for future architectural evolution
+5. **Best Practices**: Appropriate recommendations for current architecture level
+6. **Auto-Registration System**: Eliminated hardcoded dependencies, implemented extensible module system
+7. **Config-Driven Architecture**: Modules can be enabled/disabled via configuration
+8. **Scalable Design**: Easy to add new modules without modifying main.go
 
-#### 5. Commands Reference (`docs/commands.md`)
-- **Make Commands**: Development, database, build, code quality
-- **Direct Script Commands**: Database creation, development setup
-- **Go Commands**: Migration tool, API server, development tools
-- **Docker Commands**: Container management, database commands
-- **PostgreSQL Commands**: Connection, database management
-- **API Testing Commands**: Health check, endpoint testing
-- **Environment Commands**: Environment variables, module-specific overrides
-- **Troubleshooting Commands**: Debug, recovery commands
-- **Useful Combinations**: Complete setup, daily workflow, production deployment
-- **Command Aliases**: Convenient shortcuts
+The conversation highlighted the critical importance of documentation accuracy and demonstrated successful evolution from hardcoded dependencies to a flexible, auto-discovering module system that maintains simplicity while providing extensibility.
 
-### Updated README.md
-Completely restructured main README with:
+## Phase 6: Module Registry Optimization & Documentation Update (NEW)
+User requested optimization of the registry structure (3 files → 1 file) and removal of hardcoded module imports in main.go.
 
-#### Key Sections:
-- **Quick Start**: 5-step setup process
-- **Key Features**: Flexible configuration, manual database management, verbosity reduction
-- **Documentation Links**: Comprehensive table of contents với descriptions
-- **Module Configuration Examples**: Simple và advanced configurations
-- **Database Architecture**: Database per module với manual creation
-- **Architecture Overview**: Clean architecture layers và module structure
-- **Development Workflow**: Daily development và adding new features
-- **Environment Configuration**: Development, production, module-specific overrides
-- **System Status**: Health check và module status
-- **Available Commands**: Essential, database, development commands
-- **Troubleshooting**: Common issues và solutions
-- **Key Achievements**: 98% configuration reduction, perfect disable logic
-- **Contributing**: Step-by-step contribution guide
+### Registry Structure Optimization:
+**Problem Analysis:**
+- **3 files with 464 total lines**: `module_registry.go` (317 lines - OLD), `module_loader.go` (77 lines), `module_factory.go` (70 lines)
+- **Duplicate functionality**: Two different ModuleRegistry implementations
+- **Confusion**: `registry.ModuleRegistry` vs `domain.ModuleRegistry`
+- **Hardcoded imports**: Individual module imports in main.go
 
-#### Documentation Features:
-- **Comprehensive Coverage**: All aspects of the system documented
-- **Practical Examples**: Real-world usage scenarios
-- **Step-by-Step Guides**: Clear instructions for all tasks
-- **Troubleshooting Sections**: Common issues và solutions
-- **Cross-References**: Links between related documentation
-- **Code Examples**: YAML configs, bash commands, Go code snippets
-- **Visual Structure**: ASCII diagrams for architecture
-- **Priority-Based Organization**: Most important information first
+**Solution Implementation:**
+1. **Deleted obsolete files**: Removed `module_registry.go` (old implementation), `module_loader.go`, `module_factory.go`
+2. **Created unified `module_manager.go`**: Merged all functionality into single file (126 lines)
+3. **Centralized module imports**: Created `internal/modules/modules.go` for centralized module registration
+4. **Clean main.go**: Replaced individual imports with single modules package import
 
-### Documentation Benefits:
-- **Developer Onboarding**: New developers can start immediately
-- **Self-Service**: Comprehensive troubleshooting guides
-- **Best Practices**: Documented patterns và conventions
-- **Maintenance**: Clear instructions for all operations
-- **Scalability**: Documentation structure supports growth
+### Optimized Architecture:
+**Before (3 files - 464 lines):**
+```
+internal/shared/infrastructure/registry/
+├── module_registry.go   (317 lines) ❌ OLD, unused
+├── module_loader.go     (77 lines)  
+└── module_factory.go    (70 lines)  
+```
 
-**Complete documentation system created with focus on getting started và module/database management as requested!** 📚✨
+**After (1 file - 126 lines):**
+```
+internal/shared/infrastructure/registry/
+└── module_manager.go    (126 lines) ✅ Unified functionality
+```
 
-## Vault Documentation Addition
+**ModuleManager Integration:**
+```go
+type ModuleManager struct {
+    registry *domain.ModuleRegistry
+    creators map[string]ModuleCreator
+}
 
-### Request
-User requested adding comprehensive documentation about HashiCorp Vault (KeyVault) management.
+// Combines factory + loader functionality
+func (m *ModuleManager) RegisterModule(name string, creator ModuleCreator)
+func (m *ModuleManager) CreateModule(name string) (domain.Module, error)
+func (m *ModuleManager) LoadEnabledModules(cfg *config.Config) error
+func (m *ModuleManager) GetRegistry() *domain.ModuleRegistry
+```
 
-### Implementation
-- **Created**: `docs/vault-management.md` - Complete Vault documentation covering:
-  - Vault architecture (development vs production modes)
-  - Setup instructions for both environments
-  - Secret management structure and best practices
-  - Application integration with Go code examples
-  - Environment-specific configuration
-  - Security best practices (token management, secret rotation, audit logging)
-  - Comprehensive command reference
-  - Troubleshooting guide
-  - CI/CD integration examples
-  - Advanced features (dynamic secrets, templating)
+### Centralized Module Import System:
+**Before (main.go):**
+```go
+// Hardcoded individual imports
+_ "golang_modular_monolith/internal/modules/customer"
+_ "golang_modular_monolith/internal/modules/order"  
+_ "golang_modular_monolith/internal/modules/user"
+```
 
-- **Updated**: `README.md` - Added new "Security & Secrets" section with link to Vault documentation
+**After (main.go):**
+```go
+// Single centralized import
+"golang_modular_monolith/internal/modules"
 
-### Documentation Features
-- **Complete Setup Guide**: Development and production Vault setup
-- **Secret Structure**: Organized namespace approach (`secret/tmm/environment/service`)
-- **Go Integration**: Code examples for Vault client and configuration loading
-- **Security Focus**: Best practices for token management, secret rotation, audit logging
-- **Practical Examples**: Real-world scenarios for database credentials, API keys, OAuth tokens
-- **Troubleshooting**: Common issues and debugging techniques
-- **Advanced Usage**: Dynamic secrets, secret templating, CI/CD integration
+func main() {
+    modules.InitializeAllModules() // Trigger auto-registration
+    // ...
+}
+```
 
-### Benefits
-- **Enterprise Security**: Production-ready secret management
-- **Developer Friendly**: Easy development setup with auto-unsealed Vault
-- **Environment Isolation**: Separate secrets per environment
-- **Audit Trail**: Complete logging of secret access
-- **Integration Ready**: CI/CD and application integration examples
+**Centralized Registry (`internal/modules/modules.go`):**
+```go
+package modules
+
+import (
+    _ "golang_modular_monolith/internal/modules/customer"
+    _ "golang_modular_monolith/internal/modules/order"
+    _ "golang_modular_monolith/internal/modules/user"
+)
+
+func InitializeAllModules() {
+    // Ensures all module init() functions are called
+}
+```
+
+### Benefits Achieved:
+1. **73% Code Reduction**: 464 → 126 lines
+2. **Simplified Structure**: 3 files → 1 file  
+3. **Clean main.go**: No hardcoded module imports
+4. **Centralized Management**: All module imports in one place
+5. **Easy Extension**: Add new modules by updating only `modules.go`
+6. **Maintained Functionality**: All features preserved in unified structure
+
+### Documentation Update:
+Updated `docs/dependency-injection.md` to reflect the new module-based architecture:
+
+**Major Updates:**
+1. **Architecture Overview**: Changed from "Simple Manual DI" to "Module-Based Auto-Registration System"
+2. **Module Interface Documentation**: Added complete Module interface and lifecycle methods
+3. **Auto-Registration System**: Documented init() function pattern and ModuleManager
+4. **Configuration-Driven Loading**: Updated examples with new module loading process
+5. **Testing Strategies**: Updated testing examples for module-based architecture
+6. **Performance Considerations**: Added module initialization, lazy loading, memory efficiency
+7. **Best Practices**: Updated with module-specific patterns and anti-patterns
+8. **Evolution Path**: Changed roadmap to reflect current module-based state
+
+**Key Documentation Sections Added:**
+- Module Interface Definition
+- Module Auto-Registration System  
+- Customer Module Implementation Example
+- Centralized Module Import Pattern
+- Clean Main Application Entry Point
+- Module Loading and Lifecycle Management
+- Configuration-Driven Module Management
+- Runtime Module Management
+- Module DI Best Practices
+- Module-Specific Anti-Patterns
+
+The documentation now accurately reflects the current module-based architecture with auto-registration, providing comprehensive guidance for developers working with the new system.
