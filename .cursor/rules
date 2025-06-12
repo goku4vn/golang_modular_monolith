@@ -1,0 +1,5 @@
+- Lưu ý các phần sau khi thực hiện tạo migrations: Database chỉ giữ đúng vai trò lưu trữ dữ liệu. Tránh việc tạo trigger hoặc các phần khác trên database làm thay đổi dữ liệu. Các phần này nên chuyển về application để xử lý.
+Ví dụ: update_at nên được tạo trong application, không phải trong database.
+
+- Toàn bộ development sẽ được thực hiện trong môi trường docker với golang 1.24 trở lên
+- Ưu tiên dùng docker compose thay vì docker-compose (legacy)
