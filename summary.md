@@ -928,13 +928,6 @@ http:
 features:
   events_enabled: true
   caching_enabled: false
-
-# Module-specific custom settings
-customer:
-  validation:
-    email_required: true
-  business_rules:
-    max_customers_per_company: 1000
 ```
 
 **Benefits**
@@ -1401,3 +1394,39 @@ Completely restructured main README with:
 - **Scalability**: Documentation structure supports growth
 
 **Complete documentation system created with focus on getting started và module/database management as requested!** 📚✨
+
+## Vault Documentation Addition
+
+### Request
+User requested adding comprehensive documentation about HashiCorp Vault (KeyVault) management.
+
+### Implementation
+- **Created**: `docs/vault-management.md` - Complete Vault documentation covering:
+  - Vault architecture (development vs production modes)
+  - Setup instructions for both environments
+  - Secret management structure and best practices
+  - Application integration with Go code examples
+  - Environment-specific configuration
+  - Security best practices (token management, secret rotation, audit logging)
+  - Comprehensive command reference
+  - Troubleshooting guide
+  - CI/CD integration examples
+  - Advanced features (dynamic secrets, templating)
+
+- **Updated**: `README.md` - Added new "Security & Secrets" section with link to Vault documentation
+
+### Documentation Features
+- **Complete Setup Guide**: Development and production Vault setup
+- **Secret Structure**: Organized namespace approach (`secret/tmm/environment/service`)
+- **Go Integration**: Code examples for Vault client and configuration loading
+- **Security Focus**: Best practices for token management, secret rotation, audit logging
+- **Practical Examples**: Real-world scenarios for database credentials, API keys, OAuth tokens
+- **Troubleshooting**: Common issues and debugging techniques
+- **Advanced Usage**: Dynamic secrets, secret templating, CI/CD integration
+
+### Benefits
+- **Enterprise Security**: Production-ready secret management
+- **Developer Friendly**: Easy development setup with auto-unsealed Vault
+- **Environment Isolation**: Separate secrets per environment
+- **Audit Trail**: Complete logging of secret access
+- **Integration Ready**: CI/CD and application integration examples

@@ -60,6 +60,13 @@ curl http://localhost:8080/health
   - Environment-specific database setup
   - Backup và restore procedures
 
+### 🔐 Security & Secrets
+- **[Vault Management](docs/vault-management.md)** - HashiCorp Vault secret management
+  - Vault setup và configuration
+  - Secret storage và retrieval
+  - Environment-specific secrets
+  - Security best practices và troubleshooting
+
 ### 🏗️ Architecture
 - **[Project Structure](docs/project-structure.md)** - Cấu trúc source code
   - Clean architecture layers
