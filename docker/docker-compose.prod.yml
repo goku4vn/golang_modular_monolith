@@ -7,7 +7,7 @@ services:
     build:
       context: ../
       dockerfile: docker/app/Dockerfile
-    container_name: modular-monolith-prod
+    container_name: tmm-prod
     ports:
       - "${APP_PORT:-8080}:8080"
     env_file:
@@ -23,7 +23,7 @@ services:
       vault:
         condition: service_healthy
     networks:
-      - modular-monolith-network
+      - tmm-network
     restart: always
     deploy:
       resources:
@@ -50,7 +50,7 @@ services:
     build:
       context: postgres/
       dockerfile: Dockerfile
-    container_name: modular-monolith-postgres-prod
+    container_name: tmm-postgres-prod
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     environment:
@@ -67,7 +67,7 @@ services:
       timeout: 10s
       retries: 5
     networks:
-      - modular-monolith-network
+      - tmm-network
     restart: always
     deploy:
       resources:
@@ -88,7 +88,7 @@ services:
     build:
       context: redis/
       dockerfile: Dockerfile
-    container_name: modular-monolith-redis-prod
+    container_name: tmm-redis-prod
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -99,7 +99,7 @@ services:
       timeout: 10s
       retries: 5
     networks:
-      - modular-monolith-network
+      - tmm-network
     restart: always
     deploy:
       resources:
@@ -120,7 +120,7 @@ services:
     build:
       context: vault/
       dockerfile: Dockerfile
-    container_name: modular-monolith-vault-prod
+    container_name: tmm-vault-prod
     ports:
       - "${VAULT_PORT:-8200}:8200"
     volumes:
@@ -138,7 +138,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - modular-monolith-network
+      - tmm-network
     restart: always
     deploy:
       resources:
@@ -157,7 +157,7 @@ services:
   # Vault initialization service
   vault-init:
     image: hashicorp/vault:1.17
-    container_name: modular-monolith-vault-init-prod
+    container_name: tmm-vault-init-prod
     volumes:
       - vault-prod-data:/vault/data
       - ./vault/vault-init.sh:/vault-init.sh:ro
@@ -168,7 +168,7 @@ services:
       vault:
         condition: service_healthy
     networks:
-      - modular-monolith-network
+      - tmm-network
     command: ["sh", "/vault-init.sh"]
     profiles:
       - vault-init
@@ -184,6 +184,6 @@ volumes:
     driver: local
 
 networks:
-  modular-monolith-network:
+  tmm-network:
     driver: bridge
-    name: modular-monolith-network 
+    name: tmm-network 

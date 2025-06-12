@@ -95,7 +95,7 @@ create-databases:
 # Docker commands for PostgreSQL (multiple databases)
 docker-up:
 	@echo "Starting PostgreSQL with Docker..."
-	docker run --name postgres-modular-monolith \
+	docker run --name postgres-tmm \
 		-e POSTGRES_USER=postgres \
 		-e POSTGRES_PASSWORD=postgres \
 		-e POSTGRES_DB=postgres \
@@ -104,15 +104,15 @@ docker-up:
 	@echo "Waiting for PostgreSQL to be ready..."
 	@sleep 5
 	@echo "Creating module databases..."
-	@docker exec postgres-modular-monolith psql -U postgres -c "CREATE DATABASE modular_monolith_customer;" || true
-	@docker exec postgres-modular-monolith psql -U postgres -c "CREATE DATABASE modular_monolith_order;" || true
-	@docker exec postgres-modular-monolith psql -U postgres -c "CREATE DATABASE modular_monolith_product;" || true
+	@docker exec postgres-tmm psql -U postgres -c "CREATE DATABASE modular_monolith_customer;" || true
+	@docker exec postgres-tmm psql -U postgres -c "CREATE DATABASE modular_monolith_order;" || true
+	@docker exec postgres-tmm psql -U postgres -c "CREATE DATABASE modular_monolith_product;" || true
 	@echo "Module databases created successfully!"
 
 docker-down:
 	@echo "Stopping PostgreSQL Docker container..."
-	docker stop postgres-modular-monolith || true
-	docker rm postgres-modular-monolith || true
+	docker stop postgres-tmm || true
+	docker rm postgres-tmm || true
 
 # Development setup
 dev-setup: docker-up
@@ -224,7 +224,7 @@ vault-get-secret:
 vault-clean:
 	@echo "Cleaning Vault data..."
 	docker compose -f docker-compose.dev.yml stop vault vault-init
-	docker volume rm modular-monolith_vault-data modular-monolith_vault-logs || true
+	docker volume rm tmm_vault-data tmm_vault-logs || true
 
 # Module-specific commands
 customer-dev:

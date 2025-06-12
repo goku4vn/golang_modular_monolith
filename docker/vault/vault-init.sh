@@ -44,7 +44,7 @@ echo "📝 Creating sample secrets organized by module..."
 echo "📱 Creating app secrets..."
 vault kv put kv/app \
     APP_VERSION="2.1.0" \
-    APP_NAME="modular-monolith-vault" \
+    APP_NAME="tmm-vault" \
     GIN_MODE="release" \
     PORT="8080"
 
@@ -89,7 +89,7 @@ echo "🔐 Setting up AppRole authentication..."
 vault auth enable approle
 
 # Create policy for the application (access to all modules)
-vault policy write modular-monolith-policy - <<EOF
+vault policy write tmm-policy - <<EOF
 # App-level secrets
 path "kv/data/app" {
   capabilities = ["read"]
@@ -124,14 +124,14 @@ path "kv/metadata/modules/product" {
 EOF
 
 # Create AppRole
-vault write auth/approle/role/modular-monolith \
-    token_policies="modular-monolith-policy" \
+vault write auth/approle/role/tmm \
+    token_policies="tmm-policy" \
     token_ttl=1h \
     token_max_ttl=4h
 
 # Get RoleID and SecretID
-ROLE_ID=$(vault read -field=role_id auth/approle/role/modular-monolith/role-id)
-SECRET_ID=$(vault write -field=secret_id -f auth/approle/role/modular-monolith/secret-id)
+ROLE_ID=$(vault read -field=role_id auth/approle/role/tmm/role-id)
+SECRET_ID=$(vault write -field=secret_id -f auth/approle/role/tmm/secret-id)
 
 echo "🎉 Vault initialization completed!"
 echo "📋 Vault Details:"
@@ -147,7 +147,7 @@ echo "   export VAULT_ADDR=http://localhost:8200"
 echo "   export VAULT_ROLE_ID=$ROLE_ID"
 echo "   export VAULT_SECRET_ID=$SECRET_ID"
 echo "   export VAULT_MOUNT_PATH=kv"
-echo "   export VAULT_SECRET_PATH=modular-monolith"
+echo "   export VAULT_SECRET_PATH=tmm"
 echo ""
 echo "🌐 Vault UI: http://localhost:8200/ui"
 echo "   Login with token: $ROOT_TOKEN"

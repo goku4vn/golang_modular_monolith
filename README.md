@@ -249,11 +249,11 @@ curl -s http://localhost:8080/health | jq .
 ### Module Status
 ```bash
 # Check loaded modules
-docker logs modular-monolith-dev | grep "📦 Loaded"
+docker logs tmm-dev | grep "📦 Loaded"
 # Output: 📦 Loaded configuration for 2 modules: [customer order]
 
 # Check disabled modules  
-docker logs modular-monolith-dev | grep "🚫"
+docker logs tmm-dev | grep "🚫"
 # Output: 🚫 Module user explicitly disabled in central config
 ```
 
@@ -294,7 +294,7 @@ curl http://localhost:8080/health  # Test API
 cat config/modules.yaml
 
 # Check logs for disable messages
-docker logs modular-monolith-dev | grep "🚫"
+docker logs tmm-dev | grep "🚫"
 ```
 
 **Database connection failed**
@@ -309,7 +309,7 @@ make create-databases
 **Hot reload not working**
 ```bash
 # Restart application container
-docker restart modular-monolith-dev
+docker restart tmm-dev
 ```
 
 ## 🎯 Key Achievements

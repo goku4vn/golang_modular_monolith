@@ -6,7 +6,7 @@ services:
     build:
       context: ../
       dockerfile: docker/app/Dockerfile.dev
-    container_name: modular-monolith-dev
+    container_name: tmm-dev
     ports:
       - "${APP_PORT:-8080}:8080"
     volumes:
@@ -29,7 +29,7 @@ services:
       vault:
         condition: service_healthy
     networks:
-      - modular-monolith-network
+      - tmm-network
     restart: unless-stopped
 
   # PostgreSQL database service
@@ -37,7 +37,7 @@ services:
     build:
       context: postgres/
       dockerfile: Dockerfile
-    container_name: modular-monolith-postgres-dev
+    container_name: tmm-postgres-dev
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     environment:
@@ -54,7 +54,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - modular-monolith-network
+      - tmm-network
     restart: unless-stopped
 
   # Redis cache service
@@ -62,7 +62,7 @@ services:
     build:
       context: redis/
       dockerfile: Dockerfile
-    container_name: modular-monolith-redis-dev
+    container_name: tmm-redis-dev
     ports:
       - "${REDIS_PORT:-6380}:6379"
     volumes:
@@ -73,13 +73,13 @@ services:
       timeout: 3s
       retries: 5
     networks:
-      - modular-monolith-network
+      - tmm-network
     restart: unless-stopped
 
   # HashiCorp Vault service (development mode)
   vault:
     image: hashicorp/vault:1.17
-    container_name: modular-monolith-vault-dev
+    container_name: tmm-vault-dev
     ports:
       - "${VAULT_PORT:-8200}:8200"
     volumes:
@@ -97,14 +97,14 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - modular-monolith-network
+      - tmm-network
     restart: unless-stopped
     command: ["vault", "server", "-dev", "-dev-root-token-id=dev-root-token", "-dev-listen-address=0.0.0.0:8200"]
 
   # Vault initialization service
   vault-init:
     image: hashicorp/vault:1.17
-    container_name: modular-monolith-vault-init-dev
+    container_name: tmm-vault-init-dev
     volumes:
       - vault-dev-data:/vault/data
       - ./vault/vault-init.sh:/vault-init.sh:ro
@@ -115,7 +115,7 @@ services:
       vault:
         condition: service_healthy
     networks:
-      - modular-monolith-network
+      - tmm-network
     command: ["sh", "/vault-init.sh"]
     profiles:
       - vault-init
@@ -125,7 +125,7 @@ services:
     build:
       context: ../
       dockerfile: docker/app/Dockerfile.dev
-    container_name: modular-monolith-migrate-dev
+    container_name: tmm-migrate-dev
     volumes:
       - ../:/app
       - go-mod-cache:/go/pkg/mod
@@ -135,7 +135,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - modular-monolith-network
+      - tmm-network
     command: ["go", "run", "cmd/migrate/main.go", "-module=all", "-action=up"]
     profiles:
       - migrate
@@ -153,6 +153,6 @@ volumes:
     driver: local
 
 networks:
-  modular-monolith-network:
+  tmm-network:
     driver: bridge
-    name: modular-monolith-network 
+    name: tmm-network 

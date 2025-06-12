@@ -102,7 +102,7 @@ make create-databases
 cat config/modules.yaml
 
 # Check logs
-docker logs modular-monolith-dev
+docker logs tmm-dev
 ```
 
 **3. Port already in use**
@@ -116,5 +116,5 @@ make docker-down
 **4. Hot reload not working**
 ```bash
 # Restart development container
-docker restart modular-monolith-dev
+docker restart tmm-dev
 ``` 

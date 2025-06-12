@@ -13,7 +13,7 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 # Start PostgreSQL if not running
-if ! docker ps | grep -q postgres-modular-monolith; then
+if ! docker ps | grep -q postgres-tmm; then
     echo "📦 Starting PostgreSQL container..."
     make docker-up
 else

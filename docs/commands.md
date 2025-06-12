@@ -224,53 +224,53 @@ docker ps
 #### View Logs
 ```bash
 # Application logs
-docker logs modular-monolith-dev
+docker logs tmm-dev
 
 # PostgreSQL logs
-docker logs modular-monolith-postgres-dev
+docker logs tmm-postgres-dev
 
 # Follow logs
-docker logs -f modular-monolith-dev
+docker logs -f tmm-dev
 ```
 
 #### Execute Commands in Container
 ```bash
 # Access application container
-docker exec -it modular-monolith-dev sh
+docker exec -it tmm-dev sh
 
 # Access PostgreSQL container
-docker exec -it modular-monolith-postgres-dev psql -U postgres
+docker exec -it tmm-postgres-dev psql -U postgres
 ```
 
 #### Restart Containers
 ```bash
 # Restart application (for hot reload issues)
-docker restart modular-monolith-dev
+docker restart tmm-dev
 
 # Restart PostgreSQL
-docker restart modular-monolith-postgres-dev
+docker restart tmm-postgres-dev
 ```
 
 ### Database Commands in Container
 
 #### Connect to PostgreSQL
 ```bash
-docker exec -it modular-monolith-postgres-dev psql -U postgres
+docker exec -it tmm-postgres-dev psql -U postgres
 ```
 
 #### List Databases
 ```bash
-docker exec modular-monolith-postgres-dev psql -U postgres -c "\l"
+docker exec tmm-postgres-dev psql -U postgres -c "\l"
 ```
 
 #### Create Database Manually
 ```bash
-docker exec modular-monolith-postgres-dev createdb -U postgres modular_monolith_customer
+docker exec tmm-postgres-dev createdb -U postgres modular_monolith_customer
 ```
 
 #### Drop Database
 ```bash
-docker exec modular-monolith-postgres-dev dropdb -U postgres modular_monolith_customer
+docker exec tmm-postgres-dev dropdb -U postgres modular_monolith_customer
 ```
 
 ## PostgreSQL Commands
@@ -390,7 +390,7 @@ cat config/modules.yaml
 
 #### Check Application Logs
 ```bash
-docker logs modular-monolith-dev | grep -E "(📦|🗄️|🚫|Failed)"
+docker logs tmm-dev | grep -E "(📦|🗄️|🚫|Failed)"
 ```
 
 #### Check Database Connections
@@ -399,7 +399,7 @@ docker logs modular-monolith-dev | grep -E "(📦|🗄️|🚫|Failed)"
 PGPASSWORD=postgres pg_isready -h localhost -p 5433 -U postgres
 
 # List active connections
-docker exec modular-monolith-postgres-dev psql -U postgres -c "SELECT * FROM pg_stat_activity;"
+docker exec tmm-postgres-dev psql -U postgres -c "SELECT * FROM pg_stat_activity;"
 ```
 
 #### Check Port Usage
@@ -432,10 +432,10 @@ make migrate-up
 #### Fix Hot Reload Issues
 ```bash
 # Restart application container
-docker restart modular-monolith-dev
+docker restart tmm-dev
 
 # Or trigger reload manually
-docker exec modular-monolith-dev touch /app/cmd/api/main.go
+docker exec tmm-dev touch /app/cmd/api/main.go
 ```
 
 #### Fix Database Issues
@@ -504,12 +504,12 @@ make test
 
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
-alias mm-dev='make docker-dev'
-alias mm-down='make docker-down'
-alias mm-clean='make docker-clean'
-alias mm-db='make create-databases'
-alias mm-up='make migrate-up'
-alias mm-down='make migrate-down'
-alias mm-status='make migrate-status'
-alias mm-health='curl -s http://localhost:8080/health | jq .'
+alias tmm-dev='make docker-dev'
+alias tmm-down='make docker-down'
+alias tmm-clean='make docker-clean'
+alias tmm-db='make create-databases'
+alias tmm-up='make migrate-up'
+alias tmm-down='make migrate-down'
+alias tmm-status='make migrate-status'
+alias tmm-health='curl -s http://localhost:8080/health | jq .'
 ``` 

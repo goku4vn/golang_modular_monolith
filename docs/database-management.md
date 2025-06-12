@@ -244,7 +244,7 @@ docker ps | grep postgres
 PGPASSWORD=postgres pg_isready -h localhost -p 5433 -U postgres
 
 # Check logs
-docker logs modular-monolith-postgres-dev
+docker logs tmm-postgres-dev
 ```
 
 **2. Migration failed**
@@ -277,7 +277,7 @@ cat config/modules.yaml
 # Script connects to localhost (port 5433)
 
 # Create database in container
-docker exec modular-monolith-postgres-dev createdb -U postgres modular_monolith_customer
+docker exec tmm-postgres-dev createdb -U postgres modular_monolith_customer
 ```
 
 ## Best Practices

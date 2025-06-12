@@ -190,7 +190,7 @@ modules:
 ### Check Current Configuration
 ```bash
 # View loaded modules
-docker logs modular-monolith-dev | grep "📦 Loaded"
+docker logs tmm-dev | grep "📦 Loaded"
 
 # View databases
 curl http://localhost:8080/health | jq .databases

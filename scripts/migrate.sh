@@ -36,7 +36,7 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 # Check if app container is running
-if ! docker ps | grep -q "modular-monolith-dev"; then
+if ! docker ps | grep -q "tmm-dev"; then
     print_error "Application container is not running. Please run 'make docker-dev' first."
     exit 1
 fi
@@ -93,7 +93,7 @@ done
 # Show available modules if no module specified
 if [[ -z "$MODULE" ]]; then
     print_info "Getting available modules..."
-    docker exec modular-monolith-dev go run cmd/migrate/main.go 2>/dev/null || true
+    docker exec tmm-dev go run cmd/migrate/main.go 2>/dev/null || true
     exit 1
 fi
 
@@ -112,7 +112,7 @@ print_info "Running migration command: $MIGRATE_CMD"
 print_info "Module: $MODULE, Action: $ACTION"
 
 # Execute migration inside Docker container
-if docker exec modular-monolith-dev $MIGRATE_CMD; then
+if docker exec tmm-dev $MIGRATE_CMD; then
     print_success "Migration completed successfully!"
 else
     print_error "Migration failed!"
